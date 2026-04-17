@@ -1,0 +1,13 @@
+moviepy
+imageio-ffmpeg
+requests
+python-dotenv
+pillow
+groq
+langgraph
+langchain-core
+diffusers
+transformers
+accelerate
+gradio
+streamlit
