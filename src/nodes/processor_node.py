@@ -1,66 +1,60 @@
 import os
-import subprocess
-from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
-import PIL.Image  # Handle newer Pillow versions for MoviePy
+import PIL.Image
+
+# Fix for Pillow 10+ metadata in MoviePy
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 
+from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
 from src.state.agent_state import AgentState
-from src.config import VIDEO_FPS, SCENE_DURATION, OUTPUT_DIR
-
-def apply_ken_burns(clip):
-    """
-    Applies a slow zoom-in effect to a static image clip.
-    This effectively uses FFmpeg filters via MoviePy's resize method.
-    """
-    return clip.resize(lambda t: 1 + 0.02 * t)
+from src.config import VIDEO_FPS, OUTPUT_DIR
+from src.utils.video_utils import apply_random_motion, calculate_scene_duration
+from src.utils.image_utils import draw_subtitles, generate_placeholder
 
 def processor_node(state: AgentState) -> AgentState:
-    print(f"--- [Node: Processor (Rendering with FFmpeg)] ---")
+    print(f"--- [Node: Processor (Modular)] ---")
+    width, height = state.get("resolution", (1024, 1024))
+    total_target = state.get("total_duration", 20)
+    
+    per_scene_dur = calculate_scene_duration(total_target, len(state["scenes"]), state.get("enable_transitions", True))
     clips = []
     
     for i, scene in enumerate(state["scenes"]):
         image_path = scene.get("image_path")
         audio_path = scene.get("audio_path")
+        narration = scene.get("narration", "")
         
+        # 1. Visual Source
         if image_path and os.path.exists(image_path):
-            print(f"Processing scene {scene['id']} with voiceover...")
+            img = PIL.Image.open(image_path).convert("RGB").resize((width, height))
+            frame = np.array(img)
+        else:
+            frame = generate_placeholder(width, height, i + 1)
+
+        # 2. Add Subtitles & Create Clip
+        if state.get("enable_subtitles") and narration:
+            frame = draw_subtitles(frame, narration, (width, height))
             
-            # Load image
-            clip = ImageClip(image_path)
-            
-            # Load and set audio (if exists)
-            if audio_path and os.path.exists(audio_path):
-                audio_clip = AudioFileClip(audio_path)
-                duration = audio_clip.duration
-                clip = clip.set_duration(duration)
-                clip = clip.set_audio(audio_clip)
-            else:
-                clip = clip.set_duration(SCENE_DURATION)
-                
-            clip = apply_ken_burns(clip)
-            clips.append(clip)
+        clip = ImageClip(frame).set_duration(per_scene_dur)
+
+        # 3. Audio & Motion Sync
+        if audio_path and os.path.exists(audio_path):
+            audio = AudioFileClip(audio_path)
+            clip = clip.set_audio(audio.set_duration(per_scene_dur) if audio.duration > per_scene_dur else audio)
+        
+        clip = apply_random_motion(clip)
+        if state.get("enable_transitions") and i > 0:
+            clip = clip.crossfadein(1.0)
+        clips.append(clip)
     
     if clips:
-        print(f"Stitching {len(clips)} clips with synchronized audio...")
-        final_video = concatenate_videoclips(clips, method="compose")
+        padding = -1.0 if state.get("enable_transitions") else 0
+        final_video = concatenate_videoclips(clips, method="compose", padding=padding).set_duration(total_target)
         
-        output_path = os.path.join(OUTPUT_DIR, f"final_video_{state['session_id']}.mp4")
-        
-        # 3. Final Render (Powered by FFmpeg)
-        # MoviePy executes FFmpeg commands under the hood
-        print("Rendering final multimedia file via FFmpeg...")
-        final_video.write_videofile(
-            output_path, 
-            fps=VIDEO_FPS, 
-            codec="libx264", 
-            audio_codec="aac" if state.get("audio_path") else None,
-            threads=4, 
-            preset="medium"
-        )
-        
+        output_path = os.path.join(OUTPUT_DIR, f"final_{state['session_id']}.mp4")
+        final_video.write_videofile(output_path, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", threads=4)
         state["video_path"] = output_path
-    else:
-        state["error"] = "No clips were generated to stitch."
-    
+        
     return state
+
+import numpy as np # Added back for placeholder

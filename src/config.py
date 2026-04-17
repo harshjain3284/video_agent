@@ -15,11 +15,23 @@ ASSETS_DIR = "assets"
 
 # Image Models (Open Source)
 IMAGE_MODELS = {
-    "SD_1.5": "runwayml/stable-diffusion-v1-5",
-    "SDXL": "stabilityai/stable-diffusion-xl-base-1.0",
+    "Pollinations (High Stability)": "pollinations",
+    "SDXL (Cinematic)": "stabilityai/stable-diffusion-xl-base-1.0",
+    "OpenJourney": "prompthero/openjourney",
+    "Realistic_Vision": "SG_161222/Realistic_Vision_V5.1",
+    "DreamShaper": "Lykon/DreamShaper_8",
+    "Absolute_Reality": "Lykon/AbsoluteReality_V1.8.1",
     "FLUX": "black-forest-labs/FLUX.1-schnell"
 }
-DEFAULT_MODEL = "FLUX"  # Changed to FLUX for best quality
+DEFAULT_MODEL = "Pollinations (High Stability)"
+
+# Video Aspect Ratios
+ASPECT_RATIOS = {
+    "YouTube (16:9)": {"ratio": "16:9", "width": 1024, "height": 576},
+    "Phone / Reels (9:16)": {"ratio": "9:16", "width": 576, "height": 1024},
+    "Instagram / Square (1:1)": {"ratio": "1:1", "width": 1024, "height": 1024}
+}
+DEFAULT_ASPECT_RATIO = "YouTube (16:9)"
 
 # Ensure directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)

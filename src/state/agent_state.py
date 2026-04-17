@@ -16,3 +16,9 @@ class AgentState(TypedDict):
     audio_path: Optional[str]
     current_node: str
     error: Optional[str]
+    aspect_ratio: str  # e.g., "16:9", "9:16", "1:1"
+    resolution: tuple  # (width, height)
+    scene_count: int
+    enable_subtitles: bool
+    enable_transitions: bool
+    total_duration: int  # in seconds
