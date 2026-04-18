@@ -24,6 +24,7 @@ def generate_scene_image(scene, token, model_id, session_id, width, height):
                 path = os.path.join(ASSETS_DIR, session_id, f"scene_{scene_id}.png")
                 image.save(path)
                 scene["image_path"] = path
+                scene["image_model"] = mid # RECORD SUCCESSFUL MODEL
                 return scene
             except Exception as e:
                 print(f"   ⚠️ {mid} failed: {str(e)[:50]}")
@@ -36,6 +37,7 @@ def generate_scene_image(scene, token, model_id, session_id, width, height):
         path = os.path.join(ASSETS_DIR, session_id, f"scene_{scene_id}.png")
         img.save(path)
         scene["image_path"] = path
+        scene["image_model"] = "FLUX.1-schnell (Pollinations)" # RECORD FALLBACK MODEL
 
     return scene
 

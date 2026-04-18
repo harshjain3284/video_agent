@@ -20,27 +20,27 @@ def parser_node(state: AgentState) -> AgentState:
     # Using simple .replace() to avoid curly brace errors with .format()
     prompt = """
     Analyze the following text and break it down into EXACTLY {SCENE_COUNT} distinct visual scenes for a short video.
-    The total video must be {TOTAL_DURATION} seconds long.
+    The TOTAL video must be EXACTLY {TOTAL_DURATION} seconds long.
     
-    CRITICAL: For EACH scene, write a "narration" that is APPROXIMATELY {TARGET_WORDS} words long. 
-    This is necessary so the voiceover fits into {PER_SCENE_DUR} seconds per scene.
+    CRITICAL: You must assign a "duration" in seconds to EACH scene based on how long it takes to narrate and the visual importance.
+    The SUM of all "duration" values MUST EQUAL {TOTAL_DURATION}.
     
     For each scene, provide:
     1. A short description of the scene.
-    2. A detailed visual prompt for an image generator (Stable Diffusion).
+    2. A DETAILED visual prompt for an image generator. (Include: "Photorealistic, 8k, highly detailed, cinematic lighting, shot on 35mm lens, realistic textures").
     3. The narration text.
+    4. "duration": How many seconds this scene should last (e.g., 3.5).
     
     Text: "{INPUT_TEXT}"
     
-    Return ONLY a JSON list of objects with the keys: "id", "description", "visual_prompt", "narration".
-    Example: [{"id": 1, "description": "...", "visual_prompt": "...", "narration": "..."}]
+    Return ONLY a JSON list of objects with the keys: "id", "description", "visual_prompt", "narration", "duration".
+    Example: [{"id": 1, "description": "...", "visual_prompt": "...", "narration": "...", "duration": 4.5}]
     """
     
     prompt = prompt.replace("{SCENE_COUNT}", str(state['scene_count']))
     prompt = prompt.replace("{TOTAL_DURATION}", str(state['total_duration']))
-    prompt = prompt.replace("{TARGET_WORDS}", str(target_words))
-    prompt = prompt.replace("{PER_SCENE_DUR}", str(round(per_scene_duration, 1)))
     prompt = prompt.replace("{INPUT_TEXT}", state['input_text'])
+
 
     try:
         completion = client.chat.completions.create(

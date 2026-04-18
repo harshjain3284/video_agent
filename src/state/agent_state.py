@@ -22,3 +22,5 @@ class AgentState(TypedDict):
     enable_subtitles: bool
     enable_transitions: bool
     total_duration: int  # in seconds
+    model_id: str
+    video_clips: List[str] # Paths to 5-6s animated scene files

@@ -13,17 +13,19 @@ SCENE_DURATION = 5  # seconds per scene
 OUTPUT_DIR = "output"
 ASSETS_DIR = "assets"
 
-# Image Models (Open Source)
+# Image Models (FLUX is default for "Real" look)
 IMAGE_MODELS = {
-    "Pollinations (High Stability)": "pollinations",
+    "FLUX (Hyper-Realistic)": "black-forest-labs/FLUX.1-schnell",
     "SDXL (Cinematic)": "stabilityai/stable-diffusion-xl-base-1.0",
+    "Realistic Vision": "SG_161222/Realistic_Vision_V5.1",
     "OpenJourney": "prompthero/openjourney",
-    "Realistic_Vision": "SG_161222/Realistic_Vision_V5.1",
     "DreamShaper": "Lykon/DreamShaper_8",
-    "Absolute_Reality": "Lykon/AbsoluteReality_V1.8.1",
-    "FLUX": "black-forest-labs/FLUX.1-schnell"
+    "Absolute Reality": "Lykon/AbsoluteReality_V1.8.1",
+    "Pollinations (Free Fallback)": "pollinations"
 }
-DEFAULT_MODEL = "Pollinations (High Stability)"
+DEFAULT_MODEL = "FLUX (Hyper-Realistic)"
+
+
 
 # Video Aspect Ratios
 ASPECT_RATIOS = {

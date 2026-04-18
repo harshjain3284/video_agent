@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 
 def apply_custom_styles():
     """Removes all complex themes and reverts to a clean, simple light interface."""
@@ -6,7 +7,7 @@ def apply_custom_styles():
         <style>
         /* EXTREMELY STRICT size limits for small screens */
         .stImage > img, .stVideo video, div[data-testid="stVideo"] > video { 
-            max-height: 300px !important; 
+            max-height: 200px !important; 
             width: auto !important; 
             max-width: 100% !important;
             margin: 0 auto; 
@@ -32,8 +33,8 @@ def apply_custom_styles():
     """, unsafe_allow_html=True)
 
 def display_scene_grid(scenes):
-    """Simple 3-column grid for reviewing generated assets."""
-    st.write("### 🎬 Asset Preview")
+    """Simple grid for reviewing generated assets, including motion prompts and AI video chunks."""
+    st.write("### 📹 Production Preview")
     num_scenes = len(scenes)
     cols_per_row = 3
     rows = (num_scenes + (cols_per_row - 1)) // cols_per_row
@@ -45,8 +46,30 @@ def display_scene_grid(scenes):
             if idx < num_scenes:
                 scene = scenes[idx]
                 with cols[c]:
-                    st.markdown(f"**Scene {idx + 1}**")
-                    if scene.get("image_path"):
-                        st.image(scene["image_path"], use_column_width=False)
+                    # Scene Header
+                    duration = scene.get("duration", 0)
+                    st.markdown(f"**Scene {idx + 1} ({duration}s)**")
+
+                    
+                    # 1. VISUAL (Video chunk if exists, else static image)
+                    if scene.get("video_path") and os.path.exists(scene["video_path"]):
+                        st.info("✨ AI Motion")
+                        st.video(scene["video_path"])
+                    elif scene.get("image_path"):
+                        st.image(scene["image_path"], width=200)
+
+                    # Show Model Labels
+                    img_model = scene.get("image_model", "Unknown")
+                    mot_model = scene.get("motion_model", "Pending...")
+                    st.caption(f"🖼️ Image: {img_model}")
+                    st.caption(f"🧬 Motion: {mot_model}")
+                    
+                    # 2. AUDIO
                     if scene.get("audio_path"):
                         st.audio(scene["audio_path"], format="audio/mp3")
+                    
+                    # 3. MOTION PROMPT
+                    if scene.get("motion_prompt"):
+                        with st.expander("📝 Motion Plan"):
+                            st.caption(scene["motion_prompt"])
+

@@ -20,9 +20,11 @@ def get_pollinations_image(prompt, width, height):
     try:
         # CLEAN the prompt for the URL
         safe_prompt = urllib.parse.quote(prompt)
-        url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width={width}&height={height}&nologo=true"
+        # Using '&model=flux' for vastly superior realism
+        url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width={width}&height={height}&nologo=true&model=flux&seed={os.urandom(4).hex()}"
         
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, timeout=60)
+
         if response.status_code == 200:
             return Image.open(io.BytesIO(response.content)).convert("RGB")
     except Exception as e:

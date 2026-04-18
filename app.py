@@ -59,6 +59,7 @@ if st.button("🚀 Start Production Pipeline"):
     with st.container():
         prog_bar = st.progress(0)
         status = st.status("🎬 Processing...", expanded=True)
+        grid_placeholder = st.empty() # Placeholder for live grid updates
         
         # --- EXECUTION LOOP ---
         try:
@@ -71,12 +72,26 @@ if st.button("🚀 Start Production Pipeline"):
                         
                     elif node_name == "assets":
                         status.write("🎨 **Studio**: Assets generated. Reviewing...")
-                        display_scene_grid(node_state["scenes"])
-                        prog_bar.progress(70)
+                        with grid_placeholder:
+                            display_scene_grid(node_state["scenes"])
+                        prog_bar.progress(60)
+
+                    elif node_name == "motion_analyst":
+                        status.write("🧠 **AI Analyst**: Studying scenes to plan realistic motion...")
+                        with grid_placeholder:
+                            display_scene_grid(node_state["scenes"])
+                        prog_bar.progress(75)
+
+                    elif node_name == "animator":
+                        status.write("🎬 **Animator**: Generating real AI motion segments. This takes a moment...")
+                        with grid_placeholder:
+                            display_scene_grid(node_state["scenes"])
+                        prog_bar.progress(90)
                         
                     elif node_name == "processor":
-                        status.write("🎬 **Director**: Final render complete!")
+                        status.write("🎞️ **Director**: Final render and assembly complete!")
                         prog_bar.progress(100)
+
                         
                         if node_state.get("video_path"):
                             st.divider()
