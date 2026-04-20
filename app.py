@@ -9,7 +9,7 @@ st.set_page_config(page_title="Cinematic AI Video Agent", layout="wide", page_ic
 
 # Import singleton AFTER page config
 from src.workflow import agent_workflow
-from src.config import ASPECT_RATIOS, ASSETS_DIR, IMAGE_MODELS, DEFAULT_MODEL
+from src.config import ASPECT_RATIOS, ASSETS_DIR, IMAGE_MODELS, DEFAULT_MODEL, VIDEO_MODELS
 from src.utils.ui_utils import apply_custom_styles, display_scene_grid
 
 apply_custom_styles()
@@ -24,22 +24,33 @@ with st.sidebar:
     selected_model_name = st.selectbox("Image Model", list(IMAGE_MODELS.keys()), index=0)
     selected_model_id = IMAGE_MODELS[selected_model_name]
     
+    selected_video_model_name = st.selectbox("Video Model", list(VIDEO_MODELS.keys()), index=0)
+    selected_video_model_id = VIDEO_MODELS[selected_video_model_name]
+    
     st.divider()
     selected_format = st.selectbox("Format", list(ASPECT_RATIOS.keys()))
     
     col1, col2 = st.columns(2)
     with col1:
-        scene_count = st.slider("Scenes", 3, 10, 5)
+        scene_count = st.slider("Scenes", 1, 10, 1)
         enable_subs = st.checkbox("Subtitles", value=True)
     with col2:
-        total_duration = st.slider("Duration (s)", 10, 60, 20)
+        total_duration = st.slider("Duration (s)", 4, 60, 5)
         enable_trans = st.checkbox("Fades", value=True)
 
 input_text = st.text_area("Your Script", placeholder="Type your story here...", height=100)
+uploaded_file = st.file_uploader("🎨 Optional: Upload a Reference Image (Skip AI Image Gen)", type=["png", "jpg", "jpeg"])
 
 if st.button("🚀 Start Production Pipeline"):
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.makedirs(os.path.join(ASSETS_DIR, session_id), exist_ok=True)
+    session_dir = os.path.join(ASSETS_DIR, session_id)
+    os.makedirs(session_dir, exist_ok=True)
+    
+    uploaded_image_path = None
+    if uploaded_file:
+        uploaded_image_path = os.path.join(session_dir, "uploaded_ref.png")
+        with open(uploaded_image_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
     
     res = ASPECT_RATIOS[selected_format]
     state = {
@@ -49,11 +60,14 @@ if st.button("🚀 Start Production Pipeline"):
         "video_path": None,
         "error": None,
         "resolution": (res["width"], res["height"]),
-        "scene_count": scene_count,
+        "aspect_ratio": selected_format,
+        "scene_count": 1 if uploaded_image_path else scene_count,
+        "uploaded_image_path": uploaded_image_path, # NEW
         "enable_subtitles": enable_subs,
         "enable_transitions": enable_trans,
         "total_duration": total_duration,
-        "model_id": selected_model_id # Pass selected model
+        "model_id": selected_model_id,
+        "video_model_id": selected_video_model_id
     }
 
     with st.container():

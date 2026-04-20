@@ -1,70 +1,61 @@
-# Automated Image-to-Video Generation Agent (Open-Source)
+# 🎬 Video Agent MCP Specification (v2.0)
 
-## **Overview**
+This document defines the architecture, rules, and operational guidelines for the **Automated Cinematic Video Agent**, strictly following the **Model Context Protocol (MCP)** standards.
 
-This project automates the generation of short video clips (5-6 seconds) from user-provided input text. The system works as an **automated agent** that will:
-1. Parse the input text.
-2. Generate images based on scene descriptions.
-3. Apply motion effects to the images.
-4. Stitch the images together to create a final video output (20–30 seconds).
-5. Perform the entire process automatically, from input to video creation.
-
-### **Objective**
-- Automate the generation of short video clips from text input using **open-source** tools for image and motion generation.
-- **End Goal**: The system should take an input (a text description), generate a video (5–6 second motion clip per scene), and combine them into a final 20–30 second video.
+## **1. Core System Concept**
+The system is an autonomous multi-agent pipeline orchestrated via **LangGraph**. It transforms raw input text into a high-fidelity cinematic video by coordinating specialized sub-agents.
 
 ---
 
-## **Project Workflow**
+## **2. MCP Primitives**
 
-### **1. Input Parsing (Text Breakdown)**
-- **Input**: A text prompt (e.g., "You got an income tax notice this morning. Here is the first thing you must do and the one thing you must never do.").
-- **Objective**: Break down the text into actionable scenes and script descriptions.
-- **Open-Source Tool**: Use **GPT-Neo** or **GPT-J** for natural language processing tasks. These models are open-source and can be run locally.
-  
-#### **Example**:
-For input: 
-> "You got an income tax notice this morning. Here is the first thing you must do and the one thing you must never do."
+### **A. Prompts (User-Controlled Workflows)**
+These are the templates that steer the AI behavior for specific content creation tasks.
 
-The output could be:
-- **Scene 1**: "An income tax notice is on a desk. A person looks at it, worried."
-- **Scene 2**: "A person should never ignore the notice. They should contact an expert immediately."
+- **`narrative_breakdown`**: Directs the AI to analyze raw text and extract logical scene breaks, timing, and visual descriptions.
+- **`motion_intent`**: Directs the AI to analyze static images and describe realistic movement (e.g., "slow pan across documents," "light flickering").
 
----
+### **B. Tools (Model-Controlled Functions)**
+These are the executable nodes and functions the agent triggers.
 
-### **2. Image Generation**
-- **Objective**: Generate images for each scene.
-- **Open-Source Tools**:
-  - **Stable Diffusion**: A powerful model for generating images based on text prompts. You can set up and run **Stable Diffusion** locally.
-  - **DALL·E Mini** (also known as **Craiyon**): Another open-source alternative that generates images from text prompts.
-  
-#### **Example**:
-- Scene 1 Prompt: "An income tax notice on a desk. A person looks at it with a worried expression."
-- Scene 2 Prompt: "A person making a phone call in urgency, to a tax expert."
+| Tool Name | Operation | Model |
+| :--- | :--- | :--- |
+| `parser_v2` | Breaks script into JSON scene structured data. | `llama-3.3-70b` |
+| `native_image_gen` | Generates 16:9 or 9:16 high-fidelity images. | `gemini-3.1-flash-image` |
+| `cinematic_motion` | Transforms images into 4-6s video clips via ref image. | `veo-3.1-generate-preview` |
+| `video_processor` | Concatenates clips, adds subtitles and audio. | `MoviePy v2.2` |
+
+### **C. Resources (Application-Controlled Data)**
+- **`SessionState`**: The active context of the video project, including scene IDs, paths, and metadata.
+- **`AssetLibrary`**: The local storage path (`/assets/{session_id}/`) containing raw images, narration audio, and motion segments.
 
 ---
 
-### **3. Motion Generation**
-- **Objective**: Apply basic motion effects to the generated images (zoom, pan, fade).
-- **Open-Source Tools**:
-  - **MoviePy**: A Python library that allows you to add motion effects (like zooming, panning, etc.) to images and videos. This tool is great for basic motion effects.
-  - **OpenCV**: A library that provides advanced computer vision tools, including image manipulation and motion effects such as panning, zooming, and rotating images.
+## **3. Agent Operational Guidelines (MCP Rules)**
 
-#### **Example**:
-For Scene 1: Apply a slow zoom-in on the image of the tax notice.
-For Scene 2: Apply a slow pan to show the person making the phone call.
+### **Rule 1: Structured Communication**
+All internal data passing between nodes must adhere to the `AgentState` TypedDict. No loose strings or untracked state is permitted.
 
-```python
-import cv2
-import numpy as np
+### **Rule 2: Fallback Resilience**
+Every Tool must have a defined fallback path:
+- If **Veo** fails (Timeout/Quota): Revert to `Cinematic Zoom (Static)`.
+- If **HuggingFace** fails: Revert to `Pollinations.ai`.
 
-# Apply pan effect (move view across image)
-img = cv2.imread("scene1.jpg")
-height, width, _ = img.shape
-window_size = (400, 300)
+### **Rule 3: Resource Integrity**
+Tools must never delete assets from `AssetLibrary`. Every output must be traceable back to a `SessionID`.
 
-for i in range(0, width - window_size[0], 10):
-    pan_img = img[:, i:i + window_size[0]]
-    cv2.imshow("Pan", pan_img)
-    cv2.waitKey(30)  # Frame delay for animation
-cv2.destroyAllWindows()
+### **Rule 4: Input Validation**
+- Tool `native_image_gen` must validate `aspect_ratio` string matches `[16-9, 9-16, 1-1]`.
+- Tool `cinematic_motion` must validate that the `image_path` exists on disk before attempting API calls.
+
+---
+
+## **4. Error Handling Protocol**
+Following the MCP standard for error reporting:
+- **Status 400**: Invalid configuration (Mime type, Duration).
+- **Status 429**: Quota exceeded (HF/Google rate limits).
+- **Status 503**: Service Unavailable (Gemini demand spikes).
+
+## **5. Future MCP Roadmap**
+- [ ] Implement **Surgical Character Consistency** using a "Character Reference Resource."
+- [ ] Add **Voice Overlay Resource** for local TTS generation using Whisper/ElevenLabs.

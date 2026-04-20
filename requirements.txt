@@ -11,3 +11,5 @@ transformers
 accelerate
 gradio
 streamlit
+gtts
+google-genai
