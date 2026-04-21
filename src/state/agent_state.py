@@ -7,6 +7,10 @@ class Scene(TypedDict):
     narration: str
     image_path: Optional[str]
     audio_path: Optional[str]
+    video_path: Optional[str]
+    image_model: Optional[str]
+    motion_model: Optional[str]
+    motion_prompt: Optional[str]
 
 class AgentState(TypedDict):
     input_text: str
@@ -19,9 +23,13 @@ class AgentState(TypedDict):
     aspect_ratio: str  # e.g., "16:9", "9:16", "1:1"
     resolution: tuple  # (width, height)
     scene_count: int
+    scene_duration: int
     enable_subtitles: bool
+    enable_voiceover: bool
     enable_transitions: bool
     total_duration: int  # in seconds
     model_id: str
     video_model_id: str
     video_clips: List[str] # Paths to 5-6s animated scene files
+    usage_stats: List[dict] # List of costs per action
+    total_cost: float

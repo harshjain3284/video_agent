@@ -2,7 +2,7 @@ import os
 from google import genai
 from google.genai import types as genai_types
 from src.state.agent_state import AgentState
-from src.config import GEMINI_API_KEY
+from src.config import GEMINI_API_KEY, COSTS
 from src.utils.core_utils import format_aspect_ratio, ensure_session_dir
 
 def generate_image_asset(scene: dict, api_key: str, model_id: str, session_id: str, global_aspect_ratio: str):
@@ -11,9 +11,8 @@ def generate_image_asset(scene: dict, api_key: str, model_id: str, session_id: s
         return None
 
     scene_id = scene.get("id", "unknown")
-    prompt = scene.get("prompt") or scene.get("visual_prompt") or "High quality cinematic scene."
-    # Reinforce ratio in the prompt for all models
-    prompt += f" Aspect Ratio: {global_aspect_ratio}"
+    # Strong prompt reinforcement at the start
+    prompt = f"[Target Aspect Ratio: {global_aspect_ratio}] " + (scene.get("prompt") or scene.get("visual_prompt") or "High quality cinematic scene.")
     
     # 1. Standardize aspect ratio format
     ratio_gemini = format_aspect_ratio(global_aspect_ratio, "gemini")
@@ -31,9 +30,9 @@ def generate_image_asset(scene: dict, api_key: str, model_id: str, session_id: s
             response = client.models.generate_content(
                 model=model_id,
                 contents=prompt,
-                config={
-                    'response_modalities': ['IMAGE']
-                }
+                config=genai_types.GenerateContentConfig(
+                    response_modalities=['IMAGE']
+                )
             )
             # Safe extraction of image bytes
             for part in response.candidates[0].content.parts:
@@ -42,6 +41,10 @@ def generate_image_asset(scene: dict, api_key: str, model_id: str, session_id: s
                         f.write(part.inline_data.data)
                     scene["image_path"] = path
                     scene["image_model"] = f"Google {model_id}"
+                    
+                    # Track Cost
+                    price = COSTS["image"].get("gemini", 0.01)
+                    scene["image_cost"] = price
                     return scene
 
         # ─── BRANCH B: Imagen Specialized (imagen-3.0, imagen-4.0) ───────────
@@ -59,8 +62,13 @@ def generate_image_asset(scene: dict, api_key: str, model_id: str, session_id: s
                 img_bytes = response.generated_images[0].image.image_bytes
                 with open(path, "wb") as f:
                     f.write(img_bytes)
+                
                 scene["image_path"] = path
                 scene["image_model"] = f"Google {model_id}"
+                
+                # Track Cost
+                price = COSTS["image"].get("imagen", 0.03)
+                scene["image_cost"] = price
                 return scene
 
     except Exception as e:

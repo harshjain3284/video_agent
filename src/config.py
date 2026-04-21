@@ -42,6 +42,23 @@ ASPECT_RATIOS = {
 }
 DEFAULT_ASPECT_RATIO = "YouTube (16:9)"
 
+# --- Estimated Production Costs (USD) ---
+COSTS = {
+    "image": {
+        "gemini": 0.005,    # Standard Gemini multimodal images
+        "imagen": 0.030,    # High-quality Imagen generation
+        "default": 0.010
+    },
+    "video_per_sec": {
+        "veo": 0.10,        # $0.10 per second of high-end AI Video
+        "default": 0.05
+    },
+    "llm_per_1k": {
+        "gemini": 0.0001,
+        "groq": 0.0,        # Assuming free tier
+    }
+}
+
 # Ensure base directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(ASSETS_DIR, exist_ok=True)

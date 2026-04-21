@@ -8,6 +8,10 @@ def parser_node(state: AgentState) -> AgentState:
     print(f"--- [Node: Parser (Scriptwriter)] ---")
     session_id = state["session_id"]
     api_key = GROQ_API_KEY.strip(' "\'') if GROQ_API_KEY else None
+    # Initialize cost tracking at the start of the project
+    state["usage_stats"] = []
+    state["total_cost"] = 0.0
+    
     input_text = state["input_text"]
     uploaded_image_path = state.get("uploaded_image_path")
     

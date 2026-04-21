@@ -5,8 +5,8 @@ from google import genai
 from google.genai import types as genai_types
 
 from src.state.agent_state import AgentState
-from src.config import GEMINI_API_KEY
-from src.utils.core_utils import ensure_session_dir
+from src.config import GEMINI_API_KEY, COSTS
+from src.utils.core_utils import ensure_session_dir, format_aspect_ratio
 
 
 from src.utils.veo_utils import (
@@ -39,7 +39,9 @@ def generate_veo_video(
     output_dir = ensure_session_dir(session_id)
     output_path = os.path.join(output_dir, f"ai_motion_{scene_id}.mp4")
 
-    ratio = normalize_veo_aspect_ratio(aspect_ratio)
+    # Clean the ratio name (e.g., "Phone/Reels (9:16)" -> "9:16")
+    clean_ratio = format_aspect_ratio(aspect_ratio, "veo")
+    ratio = normalize_veo_aspect_ratio(clean_ratio)
     duration = normalize_veo_duration(scene.get("duration"))
     prompt = _get_scene_prompt(scene)
     actual_model = model_id or "veo-3.1-generate-preview"
@@ -74,7 +76,8 @@ def generate_veo_video(
                 "motion_model": f"Google {actual_model}",
                 "veo_duration": duration,
                 "veo_aspect_ratio": ratio,
-                "used_prompt": prompt
+                "used_prompt": prompt,
+                "video_cost": COSTS["video_per_sec"].get("veo", 0.10) * duration
             })
             print(f"✅ Scene {scene_id}: saved -> {output_path}")
             return scene
@@ -126,14 +129,13 @@ def video_node(state: AgentState) -> AgentState:
         print("⚠️ No scenes found in state.")
         return state
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        state["scenes"] = list(
-            executor.map(
-                lambda s: animate_single_scene(
-                    s, session_id, gemini_key, video_model_id, aspect_ratio
-                ),
-                scenes,
-            )
-        )
+    # ─── SEQUENTIAL GENERATION TO PREVENT 429 ERRORS ───
+    # We generate one-by-one because AI Video APIs have strict rate limits
+    state["scenes"] = []
+    for s in scenes:
+        result = animate_single_scene(s, session_id, gemini_key, video_model_id, aspect_ratio)
+        state["scenes"].append(result)
+        # Optional: short sleep to be extra safe with the API
+        # time.sleep(2) 
 
     return state

@@ -10,7 +10,7 @@ st.set_page_config(page_title="Cinematic AI Video Agent", layout="wide", page_ic
 # Import singleton AFTER page config
 from src.workflow import agent_workflow
 from src.config import ASPECT_RATIOS, ASSETS_DIR, IMAGE_MODELS, DEFAULT_MODEL, VIDEO_MODELS
-from src.utils.ui_utils import apply_custom_styles, display_scene_grid
+from src.utils.ui_utils import apply_custom_styles, display_scene_grid, display_production_bill
 
 apply_custom_styles()
 
@@ -115,11 +115,22 @@ if st.button("🚀 Start Production Pipeline"):
                         
                         if node_state.get("video_path"):
                             st.divider()
-                            st.write("### 🚀 Final Video")
-                            # Read as bytes to force local load
-                            with open(node_state["video_path"], "rb") as f:
-                                st.video(f.read())
-                            st.download_button("📥 Download MP4", open(node_state["video_path"], "rb"), f"video_{session_id}.mp4")
+                            col_vid, col_cost = st.columns([2, 1])
+                            with col_vid:
+                                st.write("### 🚀 Final Video")
+                                with open(node_state["video_path"], "rb") as f:
+                                    st.video(f.read())
+                                st.download_button("📥 Download MP4", open(node_state["video_path"], "rb"), f"video_{session_id}.mp4")
+                            
+                            with col_cost:
+                                # Calculate Breakdown for the Premium Bill
+                                img_total = sum(s.get('image_cost', 0.0) for s in node_state.get('scenes', []))
+                                vid_total = sum(s.get('video_cost', 0.0) for s in node_state.get('scenes', []))
+                                total_cost = node_state.get('total_cost', 0.0)
+                                
+                                # Use an expander to keep the UI clean and attractive
+                                with st.expander("💰 View Production Receipt", expanded=False):
+                                    display_production_bill(total_cost, img_total, vid_total)
             
             status.update(label="✅ Production Complete!", state="complete")
         except Exception as e:

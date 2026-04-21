@@ -29,13 +29,12 @@ def motion_analyst_node(state: AgentState) -> AgentState:
         motion_desc = None
         prompt = f"Analyze this image and this script: '{state['input_text']}'. Describe a short, cinematic 4-second motion for this scene. Focus only on movement, no intro text."
 
-        # --- TRY GEMINI FIRST (With Fix) ---
+        # --- TRY GEMINI FIRST (Using the new Lite model) ---
         if gemini_client:
             try:
-                # FIX: Use gemini-1.5-flash for maximum regional compatibility (404 fix)
                 img = PIL.Image.open(image_path)
                 response = gemini_client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-3.1-flash-lite-preview",
                     contents=[prompt, img]
                 )
                 motion_desc = response.text.strip()
@@ -43,15 +42,17 @@ def motion_analyst_node(state: AgentState) -> AgentState:
             except Exception as e:
                 print(f"⚠️ Gemini Motion failed: {str(e)[:50]}")
 
-        # --- TRY GROQ AS FALLBACK ---
+        # --- TRY GROQ AS ROBUST FALLBACK (11B Vision is more stable) ---
         if not motion_desc and groq_client:
             try:
                 print(f"🧠 Trying Groq Vision Fallback (Scene {scene.get('id')})...")
                 from io import BytesIO
                 temp_img = PIL.Image.open(image_path)
-                temp_img.thumbnail((512, 512))
+                
+                # Resizing for Groq stability
+                temp_img.thumbnail((512, 512)) 
                 buffered = BytesIO()
-                temp_img.save(buffered, format="JPEG")
+                temp_img.save(buffered, format="JPEG", quality=75)
                 base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
                 
                 chat_completion = groq_client.chat.completions.create(
@@ -65,9 +66,10 @@ def motion_analyst_node(state: AgentState) -> AgentState:
                     model="llama-3.2-11b-vision-preview",
                 )
                 motion_desc = chat_completion.choices[0].message.content.strip()
-                print(f"🎬 Groq Motion (Scene {scene.get('id')}): {motion_desc[:50]}...")
+                print(f"🎬 Groq Motion: {motion_desc[:50]}...")
             except Exception as e:
-                print(f"⚠️ Groq Motion failed: {str(e)[:50]}")
+                import traceback
+                print(f"⚠️ Groq Vision failed completely. Error: {str(e)}")
 
         # --- FINAL FALLBACK ---
         scene["motion_prompt"] = motion_desc or "Cinematic movement, slow zoom, high quality motion."

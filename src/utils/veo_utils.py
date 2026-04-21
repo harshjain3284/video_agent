@@ -4,8 +4,10 @@ from google.genai import types as genai_types
 
 def normalize_veo_aspect_ratio(aspect_ratio: str) -> str:
     """Veo 3.1 supports only 16:9 and 9:16."""
-    if aspect_ratio in {"16:9", "9:16"}:
-        return aspect_ratio
+    if "9:16" in aspect_ratio or "9/16" in aspect_ratio:
+        return "9:16"
+    if "16:9" in aspect_ratio or "16/9" in aspect_ratio:
+        return "16:9"
     return "16:9"
 
 def normalize_veo_duration(duration: int | None) -> int:

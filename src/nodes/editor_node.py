@@ -19,6 +19,7 @@ if not hasattr(PIL.Image, "ANTIALIAS"):
 
 from src.state.agent_state import AgentState
 from src.config import VIDEO_FPS, OUTPUT_DIR, ASSETS_DIR
+from src.utils.core_utils import ensure_session_dir
 from src.utils.video_utils import calculate_scene_duration, apply_random_motion
 from src.utils.image_utils import draw_subtitles, generate_placeholder
 
@@ -103,11 +104,15 @@ def editor_node(state: AgentState) -> AgentState:
             scene["video_path"] = None
 
         # ── 2. AUDIO SYNC ─────────────────────────────────────────
-        if audio_path and os.path.exists(audio_path):
+        # Double-check: only add gTTS if the user enabled it AND the file exists
+        if state.get("enable_voiceover", True) and audio_path and os.path.exists(audio_path):
             audio = AudioFileClip(audio_path)
             if audio.duration > per_scene_dur:
                 audio = audio.with_duration(per_scene_dur)
             clip = clip.with_audio(audio)
+        else:
+            if not state.get("enable_voiceover", True):
+                print(f"   🔇 Keeping original video audio for Scene {i+1}")
 
         # ── 3. TRANSITIONS ────────────────────────────────────────
         if state.get("enable_transitions") and i > 0:
@@ -128,5 +133,14 @@ def editor_node(state: AgentState) -> AgentState:
             codec="libx264", audio_codec="aac", threads=4
         )
         state["video_path"] = output_path
+
+    # ─── FINAL ACCOUNTING: Calculate total production cost ───
+    total_bill = 0.0
+    for scene in state.get("scenes", []):
+        total_bill += scene.get("image_cost", 0.0)
+        total_bill += scene.get("video_cost", 0.0)
+    
+    state["total_cost"] = round(total_bill, 3)
+    print(f"💰 Total Production Cost: ${state['total_cost']}")
 
     return state

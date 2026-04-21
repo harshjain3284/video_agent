@@ -75,3 +75,39 @@ def display_scene_grid(scenes):
                         with st.expander("📝 Motion Plan"):
                             st.caption(scene["motion_prompt"])
 
+def display_production_bill(total_cost, img_cost, vid_cost):
+    """Displays a premium, sleek production summary with dual USD/INR currency support."""
+    ex_rate = 84.0  # Current USD to INR conversion rate
+    total_inr = total_cost * ex_rate
+    img_inr = img_cost * ex_rate
+    vid_inr = vid_cost * ex_rate
+
+    st.markdown(f"""
+        <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e0e0e0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 30px; font-family: 'Inter', sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #1a1a1a; font-weight: 700;">🎬 Production Summary</h3>
+                <span style="background-color: #f0f4f8; color: #1f77b4; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600;">Statement ID: #{os.urandom(2).hex().upper()}</span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #f0f0f0;">
+                    <td style="padding: 12px 0; color: #666;">🧠 AI Scriptwriter & Logic</td>
+                    <td style="text-align: right; padding: 12px 0; font-weight: 500;">$0.00 <span style="color: #999; font-size: 0.9em; margin-left: 5px;">(₹0.00)</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f0f0f0;">
+                    <td style="padding: 12px 0; color: #666;">🎨 Studio Assets (AI Images)</td>
+                    <td style="text-align: right; padding: 12px 0; font-weight: 500;">${img_cost:.3f} <span style="color: #999; font-size: 0.9em; margin-left: 5px;">(₹{img_inr:.2f})</span></td>
+                </tr>
+                <tr style="border-bottom: 2px solid #1a1a1a;">
+                    <td style="padding: 12px 0; color: #666;">🧬 Motion Effects (AI Video)</td>
+                    <td style="text-align: right; padding: 12px 0; font-weight: 500;">${vid_cost:.3f} <span style="color: #999; font-size: 0.9em; margin-left: 5px;">(₹{vid_inr:.2f})</span></td>
+                </tr>
+                <tr style="font-weight: 800; font-size: 1.3em;">
+                    <td style="padding: 20px 0; color: #1a1a1a;">TOTAL INVESTMENT</td>
+                    <td style="text-align: right; padding: 20px 0; color: #1f77b4;">${total_cost:.3f} <br><span style="font-size: 0.6em; color: #1a1a1a; font-weight: 600;">(₹{total_inr:.2f} INR)</span></td>
+                </tr>
+            </table>
+            <div style="margin-top: 15px; text-align: center;">
+                <p style="color: #999; font-size: 0.8em; margin: 0;">Pricing calculated based on industry standard model rates. (1 USD ≈ ₹84 INR)</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
