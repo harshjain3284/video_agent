@@ -35,8 +35,12 @@ with st.sidebar:
         scene_count = st.slider("Scenes", 1, 10, 1)
         enable_subs = st.checkbox("Subtitles", value=True)
     with col2:
-        total_duration = st.slider("Duration (s)", 4, 60, 5)
+        scene_duration = st.selectbox("Secs per Scene", [4, 6, 8], index=0, help="Veo AI only supports 4, 6, or 8 seconds per clip.")
+        enable_voice = st.checkbox("AI Voiceover", value=True)
         enable_trans = st.checkbox("Fades", value=True)
+    
+    total_calc_duration = scene_count * scene_duration
+    st.info(f"⏱️ **Total Video Length**: {total_calc_duration} seconds")
 
 input_text = st.text_area("Your Script", placeholder="Type your story here...", height=100)
 uploaded_file = st.file_uploader("🎨 Optional: Upload a Reference Image (Skip AI Image Gen)", type=["png", "jpg", "jpeg"])
@@ -64,8 +68,10 @@ if st.button("🚀 Start Production Pipeline"):
         "scene_count": 1 if uploaded_image_path else scene_count,
         "uploaded_image_path": uploaded_image_path, # NEW
         "enable_subtitles": enable_subs,
+        "enable_voiceover": enable_voice,
         "enable_transitions": enable_trans,
-        "total_duration": total_duration,
+        "total_duration": total_calc_duration,
+        "scene_duration": scene_duration,
         "model_id": selected_model_id,
         "video_model_id": selected_video_model_id
     }
@@ -84,7 +90,7 @@ if st.button("🚀 Start Production Pipeline"):
                         st.json(node_state.get("scenes", []))
                         prog_bar.progress(30)
                         
-                    elif node_name == "assets":
+                    elif node_name == "image_generator":
                         status.write("🎨 **Studio**: Assets generated. Reviewing...")
                         with grid_placeholder:
                             display_scene_grid(node_state["scenes"])
@@ -96,14 +102,14 @@ if st.button("🚀 Start Production Pipeline"):
                             display_scene_grid(node_state["scenes"])
                         prog_bar.progress(75)
 
-                    elif node_name == "animator":
-                        status.write("🎬 **Animator**: Generating real AI motion segments. This takes a moment...")
+                    elif node_name == "video_generator":
+                        status.write("🎬 **Video Gen**: Generating real AI motion segments. This takes a moment...")
                         with grid_placeholder:
                             display_scene_grid(node_state["scenes"])
                         prog_bar.progress(90)
                         
-                    elif node_name == "processor":
-                        status.write("🎞️ **Director**: Final render and assembly complete!")
+                    elif node_name == "final_editor":
+                        status.write("🎞️ **Final Editor**: Render and assembly complete!")
                         prog_bar.progress(100)
 
                         

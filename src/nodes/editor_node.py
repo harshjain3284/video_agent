@@ -25,6 +25,8 @@ from src.utils.image_utils import draw_subtitles, generate_placeholder
 
 def _apply_loop(clip, duration):
     """Safely loop a clip to the target duration using MoviePy 2.x."""
+    if clip.duration <= 0:
+        return clip
     loops_needed = int(duration / clip.duration) + 1
     repeated = concatenate_videoclips([clip] * loops_needed)
     return repeated.with_duration(duration)
@@ -39,13 +41,18 @@ def _apply_fadein(clip, duration=1.0):
         return clip
 
 
-def processor_node(state: AgentState) -> AgentState:
-    print("--- [Node: Processor (AI-Video Aware)] ---")
+def editor_node(state: AgentState) -> AgentState:
+    print("--- [Node: Final Editor (AI-Video Aware)] ---")
     width, height = state.get("resolution", (1024, 1024))
     total_target = state.get("total_duration", 20)
 
+    scenes = state.get("scenes", [])
+    if not scenes:
+        print("⚠️ Processor: No scenes to process.")
+        return state
+
     per_scene_dur_equal = calculate_scene_duration(
-        total_target, len(state["scenes"]), state.get("enable_transitions", True)
+        total_target, len(scenes), state.get("enable_transitions", True)
     )
     clips = []
 
@@ -58,16 +65,24 @@ def processor_node(state: AgentState) -> AgentState:
         narration     = scene.get("narration", "")
 
         # ── 1. VISUAL SOURCE ──────────────────────────────────────
+        clip = None
+        
+        # Priority A: AI-Generated Motion
         if ai_video_path and os.path.exists(ai_video_path):
-            print(f"🎥 AI-Generated Motion — Scene {i+1} ({per_scene_dur}s)")
-            clip = VideoFileClip(ai_video_path).resized((width, height))
-            if clip.duration < per_scene_dur:
-                clip = _apply_loop(clip, per_scene_dur)
-            else:
-                clip = clip.with_duration(per_scene_dur)
+            try:
+                print(f"🎥 Using AI Motion — Scene {i+1}")
+                clip = VideoFileClip(ai_video_path).resized((width, height))
+                if clip.duration < per_scene_dur:
+                    clip = _apply_loop(clip, per_scene_dur)
+                else:
+                    clip = clip.with_duration(per_scene_dur)
+            except Exception as e:
+                print(f"⚠️ AI Video error (Scene {i+1}): {e}")
+                clip = None
 
-        elif image_path and os.path.exists(image_path):
-            print(f"🖼️  Static Image + Zoom Fallback — Scene {i+1} ({per_scene_dur}s)")
+        # Priority B: Static Image + Zoom Fallback
+        if not clip and image_path and os.path.exists(image_path):
+            print(f"🖼️  Using Image Fallback — Scene {i+1}")
             img   = PIL.Image.open(image_path).convert("RGB").resize((width, height))
             frame = np.array(img)
             if state.get("enable_subtitles") and narration:
@@ -76,16 +91,13 @@ def processor_node(state: AgentState) -> AgentState:
             clip = ImageClip(frame).with_duration(per_scene_dur)
             clip = apply_random_motion(clip)
 
-            fallback_path = os.path.join(
-                ASSETS_DIR, state["session_id"], f"fallback_motion_{i+1}.mp4"
-            )
-            clip.write_videofile(
-                fallback_path, fps=VIDEO_FPS,
-                codec="libx264", audio_codec="aac", logger=None
-            )
+            fallback_path = os.path.join(ensure_session_dir(state["session_id"]), f"fallback_motion_{i+1}.mp4")
+            clip.write_videofile(fallback_path, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
             scene["video_path"] = fallback_path
 
-        else:
+        # Priority C: Emergency Placeholder
+        if not clip:
+            print(f"⬛ Using Placeholder — Scene {i+1}")
             frame = generate_placeholder(width, height, i + 1)
             clip  = ImageClip(frame).with_duration(per_scene_dur)
             scene["video_path"] = None

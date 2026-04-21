@@ -53,10 +53,12 @@ def display_scene_grid(scenes):
                     
                     # 1. VISUAL (Video chunk if exists, else static image)
                     if scene.get("video_path") and os.path.exists(scene["video_path"]):
-                        st.info("✨ AI Motion")
+                        st.info("✨ AI Motion Ready")
                         st.video(scene["video_path"])
-                    elif scene.get("image_path"):
+                    elif scene.get("image_path") and os.path.exists(scene["image_path"]):
                         st.image(scene["image_path"], width=200)
+                    else:
+                        st.warning("⌛ Generating Assets...")
 
                     # Show Model Labels
                     img_model = scene.get("image_model", "Unknown")

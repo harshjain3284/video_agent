@@ -38,33 +38,10 @@ DEFAULT_VIDEO_MODEL = "Veo 3.1 (Cinematic Video)"
 ASPECT_RATIOS = {
     "YouTube (16:9)": {"ratio": "16:9", "width": 1024, "height": 576},
     "Phone / Reels (9:16)": {"ratio": "9:16", "width": 576, "height": 1024},
-    "Instagram / Square (1:1)": {"ratio": "1:1", "width": 1024, "height": 1024}
+    # "Instagram / Square (1:1)": {"ratio": "1:1", "width": 1024, "height": 1024}
 }
 DEFAULT_ASPECT_RATIO = "YouTube (16:9)"
 
-# Helper to clean model IDs and handle API-specific formatting
-def format_aspect_ratio(ratio_str: str, target_model_type: str = "veo"):
-    """
-    Standardizes aspect ratio strings for specific model requirements.
-    - gemini: 16-9
-    - veo: 16:9
-    """
-    # Extract the numbers regardless of if it came as "16:9" or "YouTube (16:9)"
-    import re
-    matches = re.findall(r"(\d+):(\d+)", ratio_str)
-    if matches:
-        w, h = matches[0]
-        if target_model_type == "gemini":
-            return f"{w}-{h}"
-        return f"{w}:{h}"
-    return "16:9" # Safety fallback
-
-def ensure_session_dir(session_id):
-    path = os.path.join(ASSETS_DIR, session_id)
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-    return path
-
-# Ensure directories exist
+# Ensure base directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(ASSETS_DIR, exist_ok=True)

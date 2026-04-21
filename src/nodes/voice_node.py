@@ -24,6 +24,12 @@ def generate_scene_audio(scene, session_id):
 def voice_node(state: AgentState) -> AgentState:
     print(f"--- [Node: Parallel Scene Audio] ---")
     
+    if not state.get("enable_voiceover", True):
+        print("   🔇 Voiceover disabled by user. Skipping.")
+        for scene in state["scenes"]:
+            scene["audio_path"] = None
+        return state
+
     with ThreadPoolExecutor() as executor:
         # Launch generation for ALL scene audio clips at once
         results = list(executor.map(lambda s: generate_scene_audio(s, state["session_id"]), state["scenes"]))
