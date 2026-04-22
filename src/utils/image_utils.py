@@ -32,8 +32,8 @@ def get_pollinations_image(prompt, width, height):
         return None
     return None
 
-def draw_subtitles(image_array, text, resolution):
-    """Bakes stylized subtitles directly into image frames."""
+def draw_subtitles(image_array, text, resolution, aspect_ratio="16:9"):
+    """Bakes stylized subtitles directly into image frames, with Reel safe-zones."""
     w, h = resolution
     img = Image.fromarray(image_array)
     draw = ImageDraw.Draw(img)
@@ -55,7 +55,10 @@ def draw_subtitles(image_array, text, resolution):
     total_h = sum([b[3] - b[1] for b in line_bboxes]) + (len(lines) * 5)
     
     pad = 15
-    y_pos = h * 0.85 - total_h
+    # REEL SAFE ZONE: If 9:16, move text higher to avoid IG/TikTok overlays
+    y_pivot = 0.75 if "9:16" in aspect_ratio else 0.85
+    y_pos = h * y_pivot - total_h
+    
     draw.rectangle([w/2-max_w/2-pad, y_pos-pad, w/2+max_w/2+pad, y_pos+total_h+pad], fill=(0,0,0,160))
     
     curr_y = y_pos

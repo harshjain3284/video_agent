@@ -33,3 +33,12 @@ class AgentState(TypedDict):
     video_clips: List[str] # Paths to 5-6s animated scene files
     usage_stats: List[dict] # List of costs per action
     total_cost: float
+    # Creative Narrative Parameters
+    script: Optional[str]
+    character_description: Optional[str]
+    # Strategic Parameters
+    category: Optional[str]
+    post_type: Optional[str]
+    hook_type: Optional[str]
+    brand_page: Optional[str]
+    format: Optional[str]

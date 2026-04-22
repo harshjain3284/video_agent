@@ -5,16 +5,16 @@ def apply_custom_styles():
     """Removes all complex themes and reverts to a clean, simple light interface."""
     st.markdown("""
         <style>
-        /* EXTREMELY STRICT size limits for small screens */
-        .stImage > img, .stVideo video, div[data-testid="stVideo"] > video { 
-            max-height: 200px !important; 
+        /* STRICT UI size limits for ALL videos and images */
+        .stImage > img, .stVideo video, div[data-testid="stVideo"] > video, .stVideo { 
+            max-height: 450px !important; 
             width: auto !important; 
             max-width: 100% !important;
-            margin: 0 auto; 
-            display: block;
-            object-fit: contain;
-            border-radius: 8px;
-            border: 1px solid #ddd;
+            margin: 0 auto !important; 
+            display: block !important;
+            object-fit: contain !important;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         
         /* Simple spacing for result cards */

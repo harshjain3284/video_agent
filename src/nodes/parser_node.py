@@ -1,113 +1,105 @@
 import json
 import os
+import re
+import time
 from groq import Groq
 from src.state.agent_state import AgentState
-from src.config import GROQ_API_KEY
+from src.config import GROQ_API_KEY, DEFAULT_VOICE_LANGUAGE, VOICE_LANGUAGES
+from src.prompts import SCRIPTWRITER_PROMPT, CHARACTER_PROMPT, SHOT_PARSER_PROMPT
+
+def clean_json_response(text: str) -> str:
+    """Extracts JSON from a string that might contain conversational filler."""
+    try:
+        start_idx = min(text.find('['), text.find('{')) if '[' in text and '{' in text else (text.find('[') if '[' in text else text.find('{'))
+        end_idx = max(text.rfind(']'), text.rfind('}')) if ']' in text and '}' in text else (text.rfind(']') if ']' in text else text.rfind('}'))
+        if start_idx != -1 and end_idx != -1:
+            return text[start_idx:end_idx+1]
+    except:
+        pass
+    return text
+
+def call_groq_with_retry(client, model, messages, retries=3, delay=2, json_mode=False):
+    """Robust Groq wrapper with automatic retries for connection issues."""
+    for i in range(retries):
+        try:
+            return client.chat.completions.create(
+                model=model,
+                messages=messages,
+                response_format={"type": "json_object"} if json_mode else None
+            )
+        except Exception as e:
+            if i == retries - 1: raise e
+            print(f"   ⚠️ Groq Attempt {i+1} failed ({e}). Retrying in {delay}s...")
+            time.sleep(delay)
 
 def parser_node(state: AgentState) -> AgentState:
-    print(f"--- [Node: Parser (Scriptwriter)] ---")
-    session_id = state["session_id"]
+    print(f"--- [Node: The Multi-Stage Narrative Architect] ---")
     api_key = GROQ_API_KEY.strip(' "\'') if GROQ_API_KEY else None
-    # Initialize cost tracking at the start of the project
-    state["usage_stats"] = []
-    state["total_cost"] = 0.0
     
-    input_text = state["input_text"]
-    uploaded_image_path = state.get("uploaded_image_path")
-    
-    # ─── SHORTCUT: If user uploaded an image, skip complex parsing ───
-    if uploaded_image_path and os.path.exists(uploaded_image_path):
-        print(f"   🚀 [Shortcut] Image detected! Skipping multi-scene breakdown.")
-        state["scenes"] = [{
-            "id": 1,
-            "visual_prompt": "Using uploaded image", # Not used but kept for safety
-            "motion_prompt": f"Based on user text: {input_text}",
-            "voiceover": input_text[:500], # Use text as narration
-            "duration": state.get("scene_duration", 4),
-            "image_path": uploaded_image_path # Inject image now
-        }]
-        state["scene_count"] = 1
-        return state
-
     if not api_key:
-        print("   ❌ Error: GROQ_API_KEY missing.")
         state["error"] = "Missing GROQ_API_KEY"
         return state
 
     client = Groq(api_key=api_key)
     
-    # Calculate target words per scene based on total duration
-    per_scene_duration = state.get('scene_duration', 4)
-    # Avg speech rate is ~2.2 words per second
-    target_words = round(per_scene_duration * 2.2)
+    # ─── STAGE 1: THE SCRIPTWRITER ───
+    print("   ✍️  Stage 1: Writing Creative Script...")
+    script_prompt = SCRIPTWRITER_PROMPT.replace("{INPUT_TEXT}", state['input_text'] or "General Consulting")
+    script_prompt = script_prompt.replace("{CATEGORY}", state.get("category", "Consulting"))
+    script_prompt = script_prompt.replace("{POST_TYPE}", state.get("post_type", "Authority"))
+    script_prompt = script_prompt.replace("{HOOK_TYPE}", state.get("hook_type", "Pain"))
+    script_prompt = script_prompt.replace("{TOTAL_DURATION}", str(state.get("total_duration", 20)))
     
-    # Using simple .replace() to avoid curly brace errors with .format()
-    prompt = """
-    Analyze the following text and break it down into EXACTLY {SCENE_COUNT} distinct visual scenes.
-    
-    CRITICAL INSTRUCTION: You MUST return EXACTLY {SCENE_COUNT} scenes. 
-    If the text is short, create more detailed visual steps or break sentences into separate visual moments to reach exactly {SCENE_COUNT}. 
-    Failure to provide exactly {SCENE_COUNT} scenes will break the system.
-
-    Each scene MUST be EXACTLY {SCENE_DURATION} seconds long.
-
-    For each scene, provide:
-    1. A short description of the scene.
-    2. A DETAILED visual prompt for an image generator. (Include: "Photorealistic, 8k, highly detailed, cinematic lighting, shot on 35mm lens, realistic textures").
-    3. The narration text.
-    4. "duration": Must be EXACTLY {SCENE_DURATION}.
-    
-    Text: "{INPUT_TEXT}"
-    
-    Return ONLY a JSON list of objects with the keys: "id", "description", "visual_prompt", "narration", "duration".
-    Example: [{"id": 1, "description": "...", "visual_prompt": "...", "narration": "...", "duration": 4.5}]
-    """
-    
-    prompt = prompt.replace("{SCENE_COUNT}", str(state['scene_count']))
-    prompt = prompt.replace("{SCENE_DURATION}", str(per_scene_duration))
-    prompt = prompt.replace("{TOTAL_DURATION}", str(state['total_duration']))
-    prompt = prompt.replace("{INPUT_TEXT}", state['input_text'])
-
-
     try:
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        
-        response_content = completion.choices[0].message.content
+        script_resp = call_groq_with_retry(client, "llama-3.3-70b-versatile", [{"role": "user", "content": script_prompt}])
+        state["script"] = script_resp.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"   ❌ Final Script Error: {e}")
+        state["script"] = state['input_text'] or "Welcome to our professional services."
+
+    # ─── STAGE 2: CHARACTER CONSISTENCY ───
+    print("   👤 Stage 2: Designing Character Profile...")
+    char_prompt = CHARACTER_PROMPT.replace("{CATEGORY}", state.get("category", "Consulting"))
+    char_prompt = char_prompt.replace("{INPUT_TEXT}", state['input_text'] or "")
+    
+    try:
+        char_resp = call_groq_with_retry(client, "llama-3.1-8b-instant", [{"role": "user", "content": char_prompt}])
+        state["character_description"] = char_resp.choices[0].message.content.strip()
+    except:
+        state["character_description"] = "A professional consultant in a modern office."
+
+    # ─── STAGE 3: THE SHOT ARCHITECT ───
+    print("   🎬 Stage 3: Breaking into Dynamic Shots...")
+    shot_prompt = SHOT_PARSER_PROMPT.replace("{CHARACTER_DESC}", state["character_description"])
+    shot_prompt = shot_prompt.replace("{SCRIPT}", state["script"])
+    shot_prompt = shot_prompt.replace("{TOTAL_DURATION}", str(state.get("total_duration", 20)))
+    
+    try:
+        shot_resp = call_groq_with_retry(client, "llama-3.3-70b-versatile", [{"role": "user", "content": shot_prompt}], json_mode=True)
+        response_content = clean_json_response(shot_resp.choices[0].message.content)
         data = json.loads(response_content)
         
-        # Extract the list from the JSON response safely
-        scenes = []
+        shots = []
         if isinstance(data, dict):
-            if "scenes" in data and isinstance(data["scenes"], list):
-                scenes = data["scenes"]
+            if "shots" in data: shots = data["shots"]
             else:
-                # Try to find any list in the dictionary values
                 for val in data.values():
-                    if isinstance(val, list):
-                        scenes = val
-                        break
-        elif isinstance(data, list):
-            scenes = data
+                    if isinstance(val, list): shots = val; break
+        
+        if not shots: raise ValueError("No shots parsed.")
 
-        # CRITICAL SAFETY check: If after all that, scenes is STILL not a list, 
-        # force it to be an empty list so it doesn't crash the next steps.
-        if not isinstance(scenes, list):
-            scenes = []
+        for shot in shots:
+            if "visual_prompt" in shot:
+                char_key = state["character_description"][:15].lower()
+                if char_key not in shot["visual_prompt"].lower():
+                    shot["visual_prompt"] = f"{state['character_description']}. {shot['visual_prompt']}"
+            if "image_path" not in shot: shot["image_path"] = None
 
-        # Ensure consistency
-        for scene in scenes:
-            if "image_path" not in scene:
-                scene["image_path"] = None
-
-        state["scenes"] = scenes
-        print(f"Successfully parsed {len(scenes)} scenes using Groq.")
+        state["scenes"] = shots
+        print(f"   🎞️ Successfully paced {len(shots)} shots.")
         
     except Exception as e:
-        print(f"Groq API Error: {e}")
-        state["error"] = f"Failed to parse scenes: {str(e)}"
+        print(f"   ❌ Final Shot Error: {e}")
+        state["error"] = f"Failed to broke script into shots: {str(e)}"
     
     return state

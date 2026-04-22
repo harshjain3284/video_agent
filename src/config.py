@@ -31,6 +31,16 @@ VIDEO_MODELS = {
     "MoviePy (Standard Fades)": "moviepy-static",
 }
 DEFAULT_VIDEO_MODEL = "Veo 3.1 (Cinematic Video)"
+ 
+# Voice Settings
+VOICE_LANGUAGES = {
+    "English (US)": {"lang": "English", "voice": "en-US-AvaNeural"},
+    "Hindi (India)": {"lang": "Hindi", "voice": "hi-IN-MadhurNeural"},
+    "Spanish (Spain)": {"lang": "Spanish", "voice": "es-ES-ElviraNeural"},
+    "French (France)": {"lang": "French", "voice": "fr-FR-DeniseNeural"},
+    "Bengali (India)": {"lang": "Bengali", "voice": "bn-IN-TanishaaNeural"}
+}
+DEFAULT_VOICE_LANGUAGE = "Hindi (India)"
 
 
 
@@ -57,6 +67,31 @@ COSTS = {
         "gemini": 0.0001,
         "groq": 0.0,        # Assuming free tier
     }
+}
+
+# --- Strategic Content Configs ---
+BRAND_STYLES = {
+    "consultease.app": "Modern Indian corporate office, clean blue and white tones, professional Indian expert in formal attire, realistic lighting, sharp 8k textures.",
+    "consultease.professionals": "Dynamic professional setting in a premium Bangalore or Mumbai office interior, professional Indian experts, realistic and sharp focus.",
+    "default": "Authentic professional Indian setting, photorealistic, cinematic shot on 35mm lens."
+}
+
+STRATEGIC_CONFIGS = {
+    "categories": [
+        "Income Tax", "Tenant / Landlord", "Professional Growth", 
+        "Employment Disputes", "Online Fraud", "GST", 
+        "Domestic Violence", "Property"
+    ],
+    "post_types": ["Hook", "Relatable", "Authority", "Scenario"],
+    "hook_types": ["Pain", "Contrarian"]
+}
+
+# Mapping Post Type to specific voice vibes (using Edge-TTS voices)
+STRATEGIC_VOICES = {
+    "Authority": "hi-IN-MadhurNeural",  # Authoritative Male
+    "Relatable": "hi-IN-AnanyaNeural",  # Softer Female
+    "Hook": "hi-IN-AnanyaNeural",      # Energetic
+    "Scenario": "hi-IN-MadhurNeural"
 }
 
 # Ensure base directories exist

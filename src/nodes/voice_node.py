@@ -1,26 +1,27 @@
 import os
+import re
 import asyncio
 import edge_tts
 from concurrent.futures import ThreadPoolExecutor
 from src.state.agent_state import AgentState
-from src.config import ASSETS_DIR
+from src.config import ASSETS_DIR, DEFAULT_VOICE_LANGUAGE, VOICE_LANGUAGES, STRATEGIC_VOICES
 
-async def _save_edge_audio(text, path):
+async def _save_edge_audio(text, path, voice):
     """Internal helper to save neural speech."""
-    # en-US-AvaNeural is a premium sounding female voice. 
-    # Alternatives: en-US-AndrewNeural (Male), en-GB-SoniaNeural (UK Female)
-    communicate = edge_tts.Communicate(text, "en-US-AvaNeural")
+    communicate = edge_tts.Communicate(text, voice)
     await communicate.save(path)
 
-def generate_scene_audio(scene, session_id):
+def generate_scene_audio(scene, session_id, voice):
     """Helper to generate a single scene voiceover using Neural TTS."""
     print(f"🎤 Neural Voice: Starting Scene {scene['id']}...")
-    narration = scene.get("narration")
-    if narration:
+    raw_narration = scene.get("narration", "")
+    # Strip SSML tags for Edge-TTS compatibility
+    narration = re.sub(r'<[^>]*>', '', raw_narration).strip()
+    if narration and any(c.isalnum() for c in narration):
         try:
             audio_path = os.path.join(ASSETS_DIR, session_id, f"voice_{scene['id']}.mp3")
             # Run the asymmetric call in a bridge
-            asyncio.run(_save_edge_audio(narration, audio_path))
+            asyncio.run(_save_edge_audio(narration, audio_path, voice))
             scene["audio_path"] = audio_path
             print(f"✅ Scene {scene['id']} neural audio complete")
         except Exception as e:
@@ -43,9 +44,21 @@ def voice_node(state: AgentState) -> AgentState:
         return state
 
     print(f"   🎙️ Generating speech for {len(state['scenes'])} scenes...")
+    
+    # Get the voice based on state or default
+    lang_key = state.get("voice_language", DEFAULT_VOICE_LANGUAGE)
+    voice = VOICE_LANGUAGES.get(lang_key, VOICE_LANGUAGES[DEFAULT_VOICE_LANGUAGE])["voice"]
+    
+    # Stratgeic Override for Hindi (to match brand personality)
+    if "Hindi" in lang_key:
+        post_type = state.get("post_type", "Authority")
+        voice = STRATEGIC_VOICES.get(post_type, voice)
+        
+    print(f"   🗣️ Using Voice: {lang_key} ({voice})")
+
     with ThreadPoolExecutor() as executor:
         # Launch generation for ALL scene audio clips at once
-        results = list(executor.map(lambda s: generate_scene_audio(s, state["session_id"]), state["scenes"]))
+        results = list(executor.map(lambda s: generate_scene_audio(s, state["session_id"], voice), state["scenes"]))
             
     state["scenes"] = results
     return state

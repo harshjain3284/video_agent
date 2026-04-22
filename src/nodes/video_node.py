@@ -7,6 +7,7 @@ from google.genai import types as genai_types
 from src.state.agent_state import AgentState
 from src.config import GEMINI_API_KEY, COSTS
 from src.utils.core_utils import ensure_session_dir, format_aspect_ratio
+from src.prompts import DEFAULT_MOTION_PROMPT
 
 
 from src.utils.veo_utils import (
@@ -19,7 +20,7 @@ from src.utils.veo_utils import (
 
 def _get_scene_prompt(scene: dict) -> str:
     prompt = scene.get("prompt") or scene.get("motion_prompt")
-    return str(prompt).strip() if prompt and str(prompt).strip() else "High quality cinematic motion."
+    return str(prompt).strip() if prompt and str(prompt).strip() else DEFAULT_MOTION_PROMPT
 
 
 def generate_veo_video(
@@ -42,7 +43,13 @@ def generate_veo_video(
     # Clean the ratio name (e.g., "Phone/Reels (9:16)" -> "9:16")
     clean_ratio = format_aspect_ratio(aspect_ratio, "veo")
     ratio = normalize_veo_aspect_ratio(clean_ratio)
-    duration = normalize_veo_duration(scene.get("duration"))
+    
+    # DYNAMIC DURATION: Select the smallest Veo block that fits the target
+    target_dur = float(scene.get("duration", 4))
+    if target_dur <= 4: duration = 4
+    elif target_dur <= 6: duration = 6
+    else: duration = 8
+    
     prompt = _get_scene_prompt(scene)
     actual_model = model_id or "veo-3.1-generate-preview"
 
@@ -129,13 +136,18 @@ def video_node(state: AgentState) -> AgentState:
         print("⚠️ No scenes found in state.")
         return state
 
-    # ─── SEQUENTIAL GENERATION TO PREVENT 429 ERRORS ───
-    # We generate one-by-one because AI Video APIs have strict rate limits
-    state["scenes"] = []
-    for s in scenes:
-        result = animate_single_scene(s, session_id, gemini_key, video_model_id, aspect_ratio)
-        state["scenes"].append(result)
-        # Optional: short sleep to be extra safe with the API
-        # time.sleep(2) 
+    # ─── CONTROLLED PARALLEL GENERATION (Speed + Safety) ───
+    print(f"   🎬 Generating {len(scenes)} videos in parallel (max 2)...")
+    
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {executor.submit(animate_single_scene, s, session_id, gemini_key, video_model_id, aspect_ratio): i for i, s in enumerate(scenes)}
+        
+        # Collect results in order
+        results = [None] * len(scenes)
+        for future in futures:
+            idx = futures[future]
+            results[idx] = future.result()
+        
+        state["scenes"] = results
 
     return state

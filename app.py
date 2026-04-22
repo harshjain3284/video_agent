@@ -1,26 +1,36 @@
 import streamlit as st
 import os
 import uuid
+import json
 import time
 from datetime import datetime
 
 # --- UI Setup (Must be first) ---
-st.set_page_config(page_title="Cinematic AI Video Agent", layout="wide", page_icon="🎬")
+st.set_page_config(page_title="Elite Cinematic AI Video Agent", layout="wide", page_icon="🎬")
 
-# Import singleton AFTER page config
 from src.workflow import agent_workflow
-from src.config import ASPECT_RATIOS, ASSETS_DIR, IMAGE_MODELS, DEFAULT_MODEL, VIDEO_MODELS
+from src.config import (
+    ASPECT_RATIOS, ASSETS_DIR, IMAGE_MODELS, DEFAULT_MODEL, 
+    VIDEO_MODELS, VOICE_LANGUAGES, DEFAULT_VOICE_LANGUAGE,
+    STRATEGIC_CONFIGS, BRAND_STYLES
+)
 from src.utils.ui_utils import apply_custom_styles, display_scene_grid, display_production_bill
+from src.nodes.parser_node import parser_node
 
 apply_custom_styles()
 
-st.title("🎬 Multi-Agent Video Production")
+st.title("🎬 Multi-Agent Video Production: Elite Edition")
+
+# --- Persistent State Management ---
+if "agent_state" not in st.session_state:
+    st.session_state.agent_state = None
+if "workflow_step" not in st.session_state:
+    st.session_state.workflow_step = "idle"
 
 # --- Control Panel ---
 with st.sidebar:
-    st.header("⚙️ Settings")
+    st.header("⚙️ Production Settings")
     
-    # Model Selection
     selected_model_name = st.selectbox("Image Model", list(IMAGE_MODELS.keys()), index=0)
     selected_model_id = IMAGE_MODELS[selected_model_name]
     
@@ -28,110 +38,205 @@ with st.sidebar:
     selected_video_model_id = VIDEO_MODELS[selected_video_model_name]
     
     st.divider()
+    selected_lang = st.selectbox("Voiceover Language", list(VOICE_LANGUAGES.keys()), index=list(VOICE_LANGUAGES.keys()).index(DEFAULT_VOICE_LANGUAGE))
     selected_format = st.selectbox("Format", list(ASPECT_RATIOS.keys()))
     
     col1, col2 = st.columns(2)
     with col1:
-        scene_count = st.slider("Scenes", 1, 10, 1)
+        total_duration = st.slider("Total Video Length (Seconds)", 5, 45, 20)
         enable_subs = st.checkbox("Subtitles", value=True)
     with col2:
-        scene_duration = st.selectbox("Secs per Scene", [4, 6, 8], index=0, help="Veo AI only supports 4, 6, or 8 seconds per clip.")
-        enable_voice = st.checkbox("AI Voiceover", value=True)
+        st.write("") # Layout spacer
+        st.write("🤖 **AI Director is ON**")
+        enable_voice = st.checkbox("AI Voice", value=True)
         enable_trans = st.checkbox("Fades", value=True)
-    
-    total_calc_duration = scene_count * scene_duration
-    st.info(f"⏱️ **Total Video Length**: {total_calc_duration} seconds")
 
-input_text = st.text_area("Your Script", placeholder="Type your story here...", height=100)
-uploaded_file = st.file_uploader("🎨 Optional: Upload a Reference Image (Skip AI Image Gen)", type=["png", "jpg", "jpeg"])
-
-if st.button("🚀 Start Production Pipeline"):
-    session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir = os.path.join(ASSETS_DIR, session_id)
-    os.makedirs(session_dir, exist_ok=True)
+    with st.expander("📊 Content Creative Strategy", expanded=True):
+        brand_page = st.selectbox("Brand / Page", list(BRAND_STYLES.keys()))
+        category = st.selectbox("Category", STRATEGIC_CONFIGS["categories"])
+        post_type = st.selectbox("Post Type", STRATEGIC_CONFIGS["post_types"])
+        hook_type = st.selectbox("Hook Type", STRATEGIC_CONFIGS["hook_types"])
+        enable_review = st.checkbox("Pause for Script Review", value=True)
     
-    uploaded_image_path = None
-    if uploaded_file:
-        uploaded_image_path = os.path.join(session_dir, "uploaded_ref.png")
-        with open(uploaded_image_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-    
-    res = ASPECT_RATIOS[selected_format]
-    state = {
-        "input_text": input_text,
-        "session_id": session_id,
-        "scenes": [],
-        "video_path": None,
-        "error": None,
-        "resolution": (res["width"], res["height"]),
-        "aspect_ratio": selected_format,
-        "scene_count": 1 if uploaded_image_path else scene_count,
-        "uploaded_image_path": uploaded_image_path, # NEW
-        "enable_subtitles": enable_subs,
-        "enable_voiceover": enable_voice,
-        "enable_transitions": enable_trans,
-        "total_duration": total_calc_duration,
-        "scene_duration": scene_duration,
-        "model_id": selected_model_id,
-        "video_model_id": selected_video_model_id
-    }
+    st.info(f"⏱️ **Target Length**: {total_duration} seconds (AI will decide the number of shots)")
 
-    with st.container():
-        prog_bar = st.progress(0)
-        status = st.status("🎬 Processing...", expanded=True)
-        grid_placeholder = st.empty() # Placeholder for live grid updates
+# --- Stage 1: The Idea Input ---
+if st.session_state.workflow_step == "idle":
+    input_text = st.text_area("What's your Idea?", placeholder="e.g. Talk about why freelancers fail at GST compliance...", height=100)
+    uploaded_file = st.file_uploader("🎨 Optional: Reference Image", type=["png", "jpg", "jpeg"])
+
+    if st.button("🚀 Start Narrative Architect"):
+        session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        res = ASPECT_RATIOS[selected_format]
         
-        # --- EXECUTION LOOP ---
+        # Initialize State
+        initial_state = {
+            "input_text": input_text,
+            "session_id": session_id,
+            "scenes": [],
+            "video_path": None,
+            "error": None,
+            "resolution": (res["width"], res["height"]),
+            "aspect_ratio": selected_format,
+            "scene_count": 6, # Fallback hint for AI
+            "uploaded_image_path": None,
+            "enable_subtitles": enable_subs,
+            "enable_voiceover": enable_voice,
+            "enable_transitions": enable_trans,
+            "total_duration": total_duration,
+            "scene_duration": 4.0, # Handled dynamically by AI now
+            "model_id": selected_model_id,
+            "video_model_id": selected_video_model_id,
+            "voice_language": selected_lang,
+            "brand_page": brand_page,
+            "category": category,
+            "post_type": post_type,
+            "hook_type": hook_type
+        }
+
+        with st.status("✍️  Narrative Architect is writing your story...") as status:
+            final_state = parser_node(initial_state)
+            st.session_state.agent_state = final_state
+            if enable_review:
+                st.session_state.workflow_step = "review"
+                st.rerun()
+            else:
+                st.session_state.workflow_step = "generate"
+                st.rerun()
+
+# --- Stage 2: Human Review ---
+elif st.session_state.workflow_step == "review":
+    st.header("📝 Strategy & Script Review")
+    state = st.session_state.agent_state
+    
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        st.subheader("High-Impact Script")
+        state["script"] = st.text_area("Narrative Script (SSML supported)", value=state.get("script", ""), height=250)
+    with col_b:
+        st.subheader("Visual Persona")
+        state["character_description"] = st.text_area("Global Character Profile", value=state.get("character_description", ""), height=100)
+        st.info("💡 Changes here will apply to all generated shots.")
+
+    st.subheader("🎞️ Shot Breakdown")
+    for i, shot in enumerate(state.get("scenes", [])):
+        with st.expander(f"Shot {shot['id']}: {shot.get('shot_type', 'Action')}", expanded=False):
+            c1, c2, c3 = st.columns([1, 2, 1])
+            shot["narration"] = c1.text_area(f"Narration {i}", value=shot.get("narration", ""), label_visibility="collapsed")
+            shot["visual_prompt"] = c2.text_area(f"Visual {i}", value=shot.get("visual_prompt", ""), label_visibility="collapsed")
+            shot["duration"] = c3.number_input(f"Dur {i}", value=float(shot.get("duration", 4.0)), step=0.5)
+
+    if st.button("🎬 Proceed with Production", type="primary"):
+        st.session_state.workflow_step = "generate"
+        st.rerun()
+    
+    if st.button("⬅️ Restart"):
+        st.session_state.workflow_step = "idle"
+        st.rerun()
+
+# --- Stage 3: Production Pipeline ---
+elif st.session_state.workflow_step == "generate" or st.session_state.workflow_step == "done":
+    state = st.session_state.agent_state
+    
+    with st.container():
+        prog_bar = st.progress(30)
+        status = st.status("🎬 Production in Progress...", expanded=True)
+        grid_placeholder = st.empty()
+        
         try:
-            for event in agent_workflow.app.stream(state):
-                for node_name, node_state in event.items():
-                    if node_name == "parser":
-                        status.write("🎥 **Scriptwriter**: Analyzing script and structuring scenes...")
-                        st.json(node_state.get("scenes", []))
-                        prog_bar.progress(30)
-                        
-                    elif node_name == "image_generator":
-                        status.write("🎨 **Studio**: Assets generated. Reviewing...")
-                        with grid_placeholder:
-                            display_scene_grid(node_state["scenes"])
-                        prog_bar.progress(60)
-
-                    elif node_name == "motion_analyst":
-                        status.write("🧠 **AI Analyst**: Studying scenes to plan realistic motion...")
-                        with grid_placeholder:
-                            display_scene_grid(node_state["scenes"])
-                        prog_bar.progress(75)
-
-                    elif node_name == "video_generator":
-                        status.write("🎬 **Video Gen**: Generating real AI motion segments. This takes a moment...")
-                        with grid_placeholder:
-                            display_scene_grid(node_state["scenes"])
-                        prog_bar.progress(90)
-                        
-                    elif node_name == "final_editor":
-                        status.write("🎞️ **Final Editor**: Render and assembly complete!")
-                        prog_bar.progress(100)
-
-                        
-                        if node_state.get("video_path"):
-                            st.divider()
-                            col_vid, col_cost = st.columns([2, 1])
-                            with col_vid:
-                                st.write("### 🚀 Final Video")
-                                with open(node_state["video_path"], "rb") as f:
-                                    st.video(f.read())
-                                st.download_button("📥 Download MP4", open(node_state["video_path"], "rb"), f"video_{session_id}.mp4")
-                            
-                            with col_cost:
-                                # Calculate Breakdown for the Premium Bill
-                                img_total = sum(s.get('image_cost', 0.0) for s in node_state.get('scenes', []))
-                                vid_total = sum(s.get('video_cost', 0.0) for s in node_state.get('scenes', []))
-                                total_cost = node_state.get('total_cost', 0.0)
-                                
-                                # Use an expander to keep the UI clean and attractive
-                                with st.expander("💰 View Production Receipt", expanded=False):
-                                    display_production_bill(total_cost, img_total, vid_total)
+            # We skip the 'parser' node as it's already done
+            current_state = state
             
-            status.update(label="✅ Production Complete!", state="complete")
+            # Manually run the rest of the graph
+            # This is simpler than filtering the stream
+            from src.workflow import asset_generation_node
+            from src.nodes.motion_node import motion_analyst_node
+            from src.nodes.video_node import video_node
+            from src.nodes.editor_node import editor_node
+
+            if st.session_state.workflow_step != "done":
+                status.write("🎨 **Studio**: Generating assets...")
+                current_state = asset_generation_node(current_state)
+                with grid_placeholder: display_scene_grid(current_state["scenes"])
+                prog_bar.progress(60)
+
+                status.write("🧠 **AI Analyst**: Planning motion paths...")
+                current_state = motion_analyst_node(current_state)
+                prog_bar.progress(75)
+
+                status.write("🎬 **Video Gen**: Rendering AI Motion (Veo 3.1)...")
+                current_state = video_node(current_state)
+                with grid_placeholder: display_scene_grid(current_state["scenes"])
+                prog_bar.progress(90)
+
+                status.write("🎞️ **Final Editor**: Compiling video & safe-zones...")
+                current_state = editor_node(current_state)
+                prog_bar.progress(100)
+                
+                st.session_state.agent_state = current_state
+                st.session_state.workflow_step = "done"
+                st.rerun()
+
+            # --- DISPLAY FINAL VIDEO ---
+            if st.session_state.workflow_step == "done":
+                status.update(label="✅ Production Complete!", state="complete")
+                node_state = st.session_state.agent_state
+                
+                st.divider()
+                st.write("### 🚀 Final Elite Video")
+                
+                # Use columns to center and constrain the vertical video
+                col_left, col_mid, col_right = st.columns([1, 1.1, 1])
+                
+                with col_mid:
+                    if node_state.get("video_path"):
+                        with open(node_state["video_path"], "rb") as f:
+                            # Final surgical CSS override for the result player
+                            st.markdown("""
+                                <style>
+                                    [data-testid="stVideo"] video {
+                                        max-height: 480px !important;
+                                        border: 2px solid #1f77b4;
+                                    }
+                                </style>
+                            """, unsafe_allow_html=True)
+                            st.video(f.read())
+                        
+                        st.download_button(
+                            "📥 Download MP4", 
+                            open(node_state["video_path"], "rb"), 
+                            f"video_{node_state['session_id']}.mp4",
+                            use_container_width=True
+                        )
+                        
+                        # New: Download Production JSON
+                        manifest = {
+                            "session_id": node_state.get("session_id"),
+                            "character_description": node_state.get("character_description"),
+                            "script": node_state.get("script"),
+                            "shots": node_state.get("scenes")
+                        }
+                        st.download_button(
+                            "💾 Download JSON Manifest",
+                            data=json.dumps(manifest, indent=4),
+                            file_name=f"manifest_{node_state['session_id']}.json",
+                            mime="application/json",
+                            use_container_width=True
+                        )
+
+                        st.write("---")
+                        st.write("### 💰 Production Receipt")
+                        img_total = sum(s.get('image_cost', 0.0) for s in node_state.get('scenes', []))
+                        vid_total = sum(s.get('video_cost', 0.0) for s in node_state.get('scenes', []))
+                        total_cost = node_state.get('total_cost', 0.0)
+                        display_production_bill(total_cost, img_total, vid_total)
+                
+                if st.button("⚡ Create New Video"):
+                    st.session_state.workflow_step = "idle"
+                    st.rerun()
+
         except Exception as e:
             st.error(f"❌ Error during execution: {e}")
+            if st.button("⬅️ Back to Review"):
+                st.session_state.workflow_step = "review"
+                st.rerun()

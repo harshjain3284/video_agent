@@ -6,6 +6,7 @@ from google.genai import types as genai_types
 from groq import Groq
 from src.state.agent_state import AgentState
 from src.config import GEMINI_API_KEY, GROQ_API_KEY
+from src.prompts import MOTION_PROMPT, DEFAULT_MOTION_PROMPT
 
 def motion_analyst_node(state: AgentState) -> AgentState:
     """Uses Gemini Vision to analyze image + text for exact motion prompts."""
@@ -27,7 +28,13 @@ def motion_analyst_node(state: AgentState) -> AgentState:
             continue
             
         motion_desc = None
-        prompt = f"Analyze this image and this script: '{state['input_text']}'. Describe a short, cinematic 4-second motion for this scene. Focus only on movement, no intro text."
+        scene_duration = scene.get("duration", 4)
+        scene_script = scene.get("narration") or scene.get("description") or state['input_text']
+        shot_type = scene.get("shot_type", "Cinematic")
+        
+        prompt = MOTION_PROMPT.replace("{SCRIPT_TEXT}", str(scene_script))
+        prompt = prompt.replace("{DURATION}", str(scene_duration))
+        prompt = prompt.replace("{POST_TYPE}", f"{state.get('post_type', 'Authority')} - {shot_type}")
 
         # --- TRY GEMINI FIRST (Using the new Lite model) ---
         if gemini_client:
@@ -72,6 +79,6 @@ def motion_analyst_node(state: AgentState) -> AgentState:
                 print(f"⚠️ Groq Vision failed completely. Error: {str(e)}")
 
         # --- FINAL FALLBACK ---
-        scene["motion_prompt"] = motion_desc or "Cinematic movement, slow zoom, high quality motion."
+        scene["motion_prompt"] = motion_desc or DEFAULT_MOTION_PROMPT
 
     return state
