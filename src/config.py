@@ -14,7 +14,7 @@ SCENE_DURATION = 5  # seconds per scene
 OUTPUT_DIR = "output"
 ASSETS_DIR = "assets"
 
-# Image Models (FLUX is default for "Real" look)
+# Image Generation Models (Actual Creators)
 IMAGE_MODELS = {
     "Nano Banana (Fast)": "gemini-2.5-flash-image",
     "Nano Banana 2 (3.1 Flash)": "gemini-3.1-flash-image-preview",
@@ -23,6 +23,15 @@ IMAGE_MODELS = {
     "FLUX (Hyper-Realistic)": "black-forest-labs/FLUX.1-schnell",
 }
 DEFAULT_MODEL = "Nano Banana (Fast)"
+
+# Vision Analysis Models (Image Understanders for Motion)
+VISION_MODELS = {
+    "Gemma 4 Dense (31B Elite)": "gemma-4-31b-it",
+    "Gemma 4 MoE (26B Specialist)": "gemma-4-26b-a4b-it",
+    "Gemini 3.1 Flash Lite (Standard)": "gemini-3.1-flash-lite-preview",
+    "Gemini 2.0 Flash (Secondary)": "gemini-2.0-flash",
+}
+DEFAULT_VISION_MODEL = "Gemma 4 Dense (31B Elite)"
 
 # Video Models
 VIDEO_MODELS = {

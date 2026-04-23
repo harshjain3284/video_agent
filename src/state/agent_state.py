@@ -42,3 +42,6 @@ class AgentState(TypedDict):
     hook_type: Optional[str]
     brand_page: Optional[str]
     format: Optional[str]
+    # Developer Auditing
+    audit_log: List[dict] # Detailed history of tasks, models, and errors
+    session_seed: Optional[int] # Fixed seed for character consistency

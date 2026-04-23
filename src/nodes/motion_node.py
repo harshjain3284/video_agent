@@ -1,84 +1,82 @@
 import os
 import base64
 import PIL.Image
+import traceback
+from datetime import datetime
 from google import genai
 from google.genai import types as genai_types
-from groq import Groq
 from src.state.agent_state import AgentState
 from src.config import GEMINI_API_KEY, GROQ_API_KEY
 from src.prompts import MOTION_PROMPT, DEFAULT_MOTION_PROMPT
+from src.utils.core_utils import retry_with_backoff
+import time
 
 def motion_analyst_node(state: AgentState) -> AgentState:
-    """Uses Gemini Vision to analyze image + text for exact motion prompts."""
-    print(f"--- [Node: Motion Analyst (Gemini Vision)] ---")
+    """Gemma 4 Vision Node with LOUD developer tracing for all fallbacks."""
+    print(f"--- [Node: Motion Analyst (Dev Clear-Trace Mode)] ---")
+    if "audit_log" not in state: state["audit_log"] = []
     
     gemini_key = GEMINI_API_KEY.strip(' "\'') if GEMINI_API_KEY else None
-    groq_key = GROQ_API_KEY.strip(' "\'') if GROQ_API_KEY else None
-    
-    if not gemini_key and not groq_key:
-        print("   ❌ Error: No API keys found for Motion Analysis.")
-        return state
+    if not gemini_key: return state
 
-    gemini_client = genai.Client(api_key=gemini_key) if gemini_key else None
-    groq_client = Groq(api_key=groq_key) if groq_key else None
+    client = genai.Client(api_key=gemini_key)
     
     for scene in state.get("scenes", []):
+        scene_id = scene.get('id', 'unknown')
         image_path = scene.get("image_path")
-        if not image_path or not os.path.exists(image_path):
-            continue
+        if not image_path or not os.path.exists(image_path): continue
+            
+        # --- IDEMPOTENCY CHECK ---
+        if scene.get("motion_prompt") and scene["motion_prompt"] != DEFAULT_MOTION_PROMPT: continue
             
         motion_desc = None
-        scene_duration = scene.get("duration", 4)
-        scene_script = scene.get("narration") or scene.get("description") or state['input_text']
-        shot_type = scene.get("shot_type", "Cinematic")
+        scene_narration = str(scene.get("narration", ""))
+        shot_type = scene.get("shot_type", "Close-up")
         
-        prompt = MOTION_PROMPT.replace("{SCRIPT_TEXT}", str(scene_script))
-        prompt = prompt.replace("{DURATION}", str(scene_duration))
-        prompt = prompt.replace("{POST_TYPE}", f"{state.get('post_type', 'Authority')} - {shot_type}")
+        prompt = MOTION_PROMPT.format(
+            IMAGE_DESCRIPTION=f"An Indian professional in a {shot_type} shot.",
+            NARRATION=scene_narration
+        )
 
-        # --- TRY GEMINI FIRST (Using the new Lite model) ---
-        if gemini_client:
+        success = False
+        last_trace = ""
+        # --- CHAIN: GEMMA 4 31B -> GEMMA 4 26B -> GEMINI 3.1 ---
+        for model_id in ["gemma-4-31b-it", "gemma-4-26b-a4b-it", "gemini-3.1-flash-lite-preview"]:
             try:
-                img = PIL.Image.open(image_path)
-                response = gemini_client.models.generate_content(
-                    model="gemini-3.1-flash-lite-preview",
-                    contents=[prompt, img]
+                print(f"🔍 [ATTEMPT] Analyzing Scene {scene_id} with {model_id}...")
+                response = client.models.generate_content(
+                    model=model_id,
+                    contents=[prompt, PIL.Image.open(image_path)]
                 )
                 motion_desc = response.text.strip()
-                print(f"🎬 Gemini Motion (Scene {scene.get('id')}): {motion_desc[:50]}...")
+                state["audit_log"].append({
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "node": f"Motion Analyst: Scene {scene_id}",
+                    "status": "Success",
+                    "model": model_id,
+                    "details": f"Vision Result: {motion_desc[:120]}..."
+                })
+                success = True
+                print(f"✅ {model_id} Success!")
+                break
             except Exception as e:
-                print(f"⚠️ Gemini Motion failed: {str(e)[:50]}")
+                last_trace = traceback.format_exc()
+                # LOUD PRINTING: We now print every single failure immediately
+                print(f"❌ [DEV TRACE] {model_id} FAILED for Scene {scene_id}:\n{last_trace}")
+                time.sleep(1) # Extra cooling after a failure
 
-        # --- TRY GROQ AS ROBUST FALLBACK (11B Vision is more stable) ---
-        if not motion_desc and groq_client:
-            try:
-                print(f"🧠 Trying Groq Vision Fallback (Scene {scene.get('id')})...")
-                from io import BytesIO
-                temp_img = PIL.Image.open(image_path)
-                
-                # Resizing for Groq stability
-                temp_img.thumbnail((512, 512)) 
-                buffered = BytesIO()
-                temp_img.save(buffered, format="JPEG", quality=75)
-                base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-                
-                chat_completion = groq_client.chat.completions.create(
-                    messages=[{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-                        ]
-                    }],
-                    model="llama-3.2-11b-vision-preview",
-                )
-                motion_desc = chat_completion.choices[0].message.content.strip()
-                print(f"🎬 Groq Motion: {motion_desc[:50]}...")
-            except Exception as e:
-                import traceback
-                print(f"⚠️ Groq Vision failed completely. Error: {str(e)}")
+        if not success:
+            motion_desc = DEFAULT_MOTION_PROMPT
+            state["audit_log"].append({
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "node": f"Motion Analyst: Scene {scene_id}",
+                "status": "Critical Failure",
+                "model": "All Models Failed",
+                "details": "Using global default prompt.",
+                "trace": last_trace
+            })
 
-        # --- FINAL FALLBACK ---
-        scene["motion_prompt"] = motion_desc or DEFAULT_MOTION_PROMPT
+        scene["motion_prompt"] = motion_desc
+        time.sleep(1.5)
 
     return state

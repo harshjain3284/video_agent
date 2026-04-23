@@ -91,7 +91,9 @@ if st.session_state.workflow_step == "idle":
             "brand_page": brand_page,
             "category": category,
             "post_type": post_type,
-            "hook_type": hook_type
+            "hook_type": hook_type,
+            "audit_log": [],
+            "session_seed": None
         }
 
         with st.status("✍️  Narrative Architect is writing your story...") as status:
@@ -124,7 +126,13 @@ elif st.session_state.workflow_step == "review":
             c1, c2, c3 = st.columns([1, 2, 1])
             shot["narration"] = c1.text_area(f"Narration {i}", value=shot.get("narration", ""), label_visibility="collapsed")
             shot["visual_prompt"] = c2.text_area(f"Visual {i}", value=shot.get("visual_prompt", ""), label_visibility="collapsed")
-            shot["duration"] = c3.number_input(f"Dur {i}", value=float(shot.get("duration", 4.0)), step=0.5)
+            # NATIVE SYNC: Forcing 4, 6, 8s in the UI
+            current_dur = float(shot.get("duration", 4.0))
+            if current_dur not in [4.0, 6.0, 8.0]:
+                if current_dur < 5: current_dur = 4.0
+                elif current_dur < 7: current_dur = 6.0
+                else: current_dur = 8.0
+            shot["duration"] = c3.selectbox(f"Dur {i}", options=[4.0, 6.0, 8.0], index=[4.0, 6.0, 8.0].index(current_dur), label_visibility="collapsed")
 
     if st.button("🎬 Proceed with Production", type="primary"):
         st.session_state.workflow_step = "generate"
@@ -235,8 +243,28 @@ elif st.session_state.workflow_step == "generate" or st.session_state.workflow_s
                     st.session_state.workflow_step = "idle"
                     st.rerun()
 
+                # --- DEVELOPER AUDIT LOG ---
+                if node_state.get("audit_log"):
+                    with st.expander("🕵️ Developer Audit Log (Full Workflow History)"):
+                        for entry in node_state["audit_log"]:
+                            st.write(f"**[{entry['timestamp']}] {entry['node']}**")
+                            c1, c2 = st.columns([1, 4])
+                            c1.caption(f"Status: {entry['status']}")
+                            c1.caption(f"Model: {entry['model']}")
+                            c2.code(entry['details'], language="text")
+                            
+                            # DISPLAY RAW TRACE IF EXISTS
+                            if "trace" in entry:
+                                with st.expander("🛠️ Technical Diagnostic (Raw Traceback)"):
+                                    st.code(entry["trace"], language="python")
+                            st.divider()
+
         except Exception as e:
+            import traceback
             st.error(f"❌ Error during execution: {e}")
+            with st.expander("🛠️ Technical Diagnostic (Traceback)", expanded=True):
+                st.code(traceback.format_exc())
+            
             if st.button("⬅️ Back to Review"):
                 st.session_state.workflow_step = "review"
                 st.rerun()
