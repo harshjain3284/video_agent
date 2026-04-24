@@ -11,6 +11,7 @@ class Scene(TypedDict):
     image_model: Optional[str]
     motion_model: Optional[str]
     motion_prompt: Optional[str]
+    image_group: Optional[str] # e.g., "group_A", "group_B"
 
 class AgentState(TypedDict):
     input_text: str
@@ -42,6 +43,9 @@ class AgentState(TypedDict):
     hook_type: Optional[str]
     brand_page: Optional[str]
     format: Optional[str]
+    visual_strategy: Optional[str] # "narrator" or "cinematic"
     # Developer Auditing
     audit_log: List[dict] # Detailed history of tasks, models, and errors
     session_seed: Optional[int] # Fixed seed for character consistency
+    identity_dna: Optional[str] # Surgical visual DNA extracted from Hero shot
+

@@ -118,8 +118,13 @@ def video_node(state: AgentState) -> AgentState:
     scenes = state.get("scenes", [])
     results = []
     for s in scenes:
+        scene_id = s.get("id", "unknown")
+        print(f"   🎥 [Veo] Generating AI Video Motion for Scene {scene_id}...")
         res = generate_veo_video(s, gemini_key or "", video_model_id, session_id, aspect_ratio, state["audit_log"])
+        if res and res.get("video_path"):
+            print(f"      ✅ Video Segment Ready: {os.path.basename(res['video_path'])}")
         results.append(res if res else s)
         time.sleep(5.0) # Standard Cooling
+
     state["scenes"] = results
     return state

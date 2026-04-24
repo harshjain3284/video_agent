@@ -93,7 +93,7 @@ if st.session_state.workflow_step == "idle":
             "post_type": post_type,
             "hook_type": hook_type,
             "audit_log": [],
-            "session_seed": None
+            "identity_dna": None
         }
 
         with st.status("✍️  Narrative Architect is writing your story...") as status:
@@ -123,6 +123,8 @@ elif st.session_state.workflow_step == "review":
     st.subheader("🎞️ Shot Breakdown")
     for i, shot in enumerate(state.get("scenes", [])):
         with st.expander(f"Shot {shot['id']}: {shot.get('shot_type', 'Action')}", expanded=False):
+
+
             c1, c2, c3 = st.columns([1, 2, 1])
             shot["narration"] = c1.text_area(f"Narration {i}", value=shot.get("narration", ""), label_visibility="collapsed")
             shot["visual_prompt"] = c2.text_area(f"Visual {i}", value=shot.get("visual_prompt", ""), label_visibility="collapsed")

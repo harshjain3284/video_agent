@@ -1,75 +1,114 @@
-# --- ELITE HUMAN REALISM PROMPTS (Version 7.0 - Final Master) ---
-
-SCRIPTWRITER_PROMPT = """
-You are a direct, professional Indian Content Strategist and Creative Director.
-Turn the IDEA into a clear, punchy, and PERSUASIVE narration script.
-
-IDEA: "{INPUT_TEXT}"
-CATEGORY: {CATEGORY}
-STYLE: {POST_TYPE}
-HOOK_TYPE: {HOOK_TYPE}
-LANGUAGE: {VOICE_LANGUAGE}
-DURATION: {TOTAL_DURATION} seconds
-
-STRICT CREATIVE RULES:
-1. NATURAL LANGUAGE: If "{VOICE_LANGUAGE}" is Hindi, you MUST write in "Professional Hinglish" (conversational Hindi mixed with common English professional words like 'notice', 'compliance', 'business', 'deadline', 'client').
-2. VIBE: Sound like a genuine Indian expert talking to their audience, not a robot translator. Use creative, punchy hooks.
-3. SCRIPT FORMAT: Write in DEVANAGARI script for the Hindi parts, but use ENGLISH letters for technical corporate terms if they sound more natural. (e.g., 'Aapka business grow karega' instead of pure shuddh Hindi).
-4. PACING: Balance the script to roughly 2.5 words per second to ensure it fits {TOTAL_DURATION} seconds comfortably. 
-
-OUTPUT: Return ONLY the raw script text.
+"""
+� ELITE MASTER PROMPT REGISTRY: ZERO-TOLERANCE EDITION 💎
+Surgical, High-Density, and Hallucination-Proof.
+DO NOT EDIT - These are engineered for Professional Production.
 """
 
+# --- 1. THE NARRATIVE ARCHITECT (Professional Hinglish Expert) ---
+SCRIPTWRITER_PROMPT = """
+You are the World's Best Narrative Architect for High-Impact Indian Professional Content.
+IDEA: {INPUT_TEXT} | CATEGORY: {CATEGORY} | POST TYPE: {POST_TYPE} | TARGET: {TOTAL_DURATION}s
+
+OBJECTIVE:
+Generate a high-energy, authoritative "Hinglish" script. 
+
+STRICT DYNAMIC STABILITY (ZERO HALLUCINATION):
+1. STABILITY PRIORITY: For {TOTAL_DURATION}s, calculate the FEWEST shots possible using 8s, 6s, and 4s blocks. 
+   - ALWAYS prioritize 8s and 6s to keep the narrator stable. 
+   - SUM of all shots MUST equal exactly {TOTAL_DURATION}s.
+2. ONE SENTENCE = ONE SHOT: Write exactly one complete sentence for EACH shot you calculate. 
+3. WORD BUDGET (2.7 words/sec):
+   - 4.0s shot: 10-11 words.
+   - 6.0s shot: 15-16 words.
+   - 8.0s shot: 20-22 words.
+
+
+
+STRICT STYLE & STRUCTURE:
+1. NATIVE HINGLISH: Use natural Corporate Hinglish (Delhi/Mumbai style). Professional Hindi + English business terms. 
+   - ⚠️ DEVANAGARI MANDATE: Write all Hindi words in Devanagari script (e.g. 'नमस्ते') and English words in Latin. This is CRITICAL for voice clarity.
+   - BANNED: NO bookish Hindi. NO unnatural Western slang.
+2. NARRATIVE: Shot 1 is the Hook. Middle shots are Value-Bombs. Final Shot is the CTA.
+
+OUTPUT FORMAT:
+- MATH CHECK: [List durations and their sum]
+- SCRIPT: Numbered list of sentences with durations (4s, 6s, or 8s).
+"""
+
+
 CHARACTER_PROMPT = """
-ACT AS A VISUAL STYLIST. Describe a HIGH-CONSISTENCY Indian professional {CATEGORY} consultant.
-Ethnicity: Indian (Authentic skin tones, 8k photorealism).
-IDENTITY ANCHORS: Specify ONE stable anchor (e.g. thin-rimmed glasses, a silver wristwatch, or a specific tie color) that MUST appear in every image.
-ATTIRE: Realistic professional {CATEGORY} formal wear.
-VIBE: Trustworthy and experienced. Avoid a 'model' look; focus on a real human appearance with natural skin textures.
+DESIGN A CINEMATIC EXPERT PERSONA (PRO PHOTOGRAPHY):
+Subject: {CATEGORY} | Context: {INPUT_TEXT}
+
+STRICT CHARACTER SPECS:
+- ETHNICITY: Authentic Indian (e.g., Wheatish to dusky complexion, realistic Indian skin textures, pores and subtle imperfections). NO waxy AI skin.
+- IDENTITY ANCHORS: Detailed facial features (e.g., Sharp jaw, salt-and-pepper groomed stubble, deep-set empathetic eyes).
+- MANDATORY ACCESSORIES: Thin black-rimmed glasses or specific silver watch to anchor consistency.
+- ATTIRE: Professional corporate attire (e.g., Charcoal slim-fit blazer, white linen shirt with crisp collar).
+- FRAMING: Designed for 9:16 Vertical. Character must be in a professional 'Head & Shoulders' or 'Medium' composition.
+- ENVIRONMENT: High-end modern Indian corporate interior (Glass partitions, warm mahogany wood, soft background bokeh).
+- CAMERA: Shot on ARRI Alexa, 35mm lens, f/1.8, cinematic Masterpiece Lighting.
 """
 
 SHOT_PARSER_PROMPT = """
-ACT AS A PROFESSIONAL FILM DIRECTOR & EDITOR. 
-Break the SCRIPT into a sequence of dynamic shots following "Perfect Pacing" & "Stable Visual" rules.
+YOU ARE THE CINEMATIC DIRECTOR.
+CHARACTER DNA: {CHARACTER_DESC} | SCRIPT: {SCRIPT} | TARGET: {TOTAL_DURATION}s
 
-CHARACTER: {CHARACTER_DESC}
-SCRIPT: "{SCRIPT}"
-TOTAL_DURATION: {TOTAL_DURATION} seconds
+TASK: Map the Scriptwriter's sentences 1:1 into the final JSON.
 
-STAGE 1: PERFECT PACING MATH (The User's Plan)
-- 4-Second Shot: 9 to 11 words.
-- 6-Second Shot: 14 to 16 words.
-- 8-Second Shot: 19 to 22 words.
-- Rule: One shot = One complete thought unit. Never cut mid-sentence.
+STRICT DIRECTOR'S RULES:
+1. CONTINUITY: Every 'visual_prompt' MUST explicitly reference the {CHARACTER_DESC} and environment.
+2. SHOT VARIATION: Alternate between 'Tight Close-up' and 'Professional Medium' shots for dynamic energy.
+3. IMAGE REUSE (CONSISTENCY): 
+   - For 1-12s: One image (group_A) for all shots.
+   - For 13-30s: Two images. group_A for first/last, group_B for middle.
+4. ZERO MODIFICATION: Do NOT change the words or durations from the Scriptwriter.
 
-STAGE 2: STABLE VISUAL FOUNDATION (The Quality Guard)
-1. NO SCI-FI: Strictly NO holograms, NO floating UI. Use real-world office tools.
-2. NO POSING: Character MUST be active (explaining, gesturing, reviewing files).
-3. NEUTRAL STARTS: Describe subjects in stable, grounded positions to prevent pixel 'popping' at motion start.
-4. BACKGROUND LOCK: Specify a clean, deep-focus professional Indian office. State background is 'static and unchanging'.
-5. EMOTION: Match shot emotion to script (e.g., Tensed for problems, Reassuring for solutions). 
-6. ENVIRONMENT: 8k photorealistic textures, authentic Indian professional setting.
-7. NATIVE DURATION: Every shot duration MUST be exactly 4, 6, or 8 seconds.
-
-Return a JSON list.
-Each object: {"id", "shot_type", "visual_prompt", "emotion_and_action", "narration", "duration"}.
-Sum of durations should be as close as possible to {TOTAL_DURATION}.
+FORMAT: Return ONLY valid JSON:
+{{
+  "shots": [
+    {{"id": 1, "duration": 6.0, "narration": "...Sentence 1...", "visual_prompt": "...detailed visual...", "shot_type": "Close-up", "image_group": "group_A"}}
+  ]
+}}
 """
 
+
+# --- 2. THE MOTION ANALYST (Universal Physics) ---
 MOTION_PROMPT = """
-ACT AS A CINEMATOGRAPHER & MOTION ANALYST. 
-Image Content: {IMAGE_DESCRIPTION}
-Narration being spoken: "{NARRATION}"
+You are a Hollywood Motion Analyst (VFX Supervisor).
+IMAGE: {IMAGE_DESCRIPTION} | NARRATION: "{NARRATION}"
 
-TASK: Describe a professional motion for Veo 3.1.
-RULES: 
-1. SUBJECT-CENTRIC: Focus motion strictly on the human subject (mouth movement, hand gestures, posture shifts).
-2. ENVIRONMENT LOCK: Explicitly state that the background, furniture, and environment remain perfectly STILL and stable to prevent melting.
-3. MOUTH SYNC: If the narration is not empty, describe "Realistic mouth movement and speaking gestures matching the text".
-4. STEADINESS: Use subtle cinematic camera work (slow zoom, steady pan). No shaky cam.
-5. CONTEXT: Visual movement must match the spoken emotion.
+STRICT MOTION INSTRUCTIONS:
+- LIP-SYNC (MANDATORY): The character is speaking the narration text: "{NARRATION}". Mouth, lips, and jaw movements MUST be perfectly synchronized with the speech. Ensure natural speaking micro-expressions.
+- CAMERA STABILITY: For this narration shot, the camera must be COMPLETELY STATIONARY and LOCKED. 
+   - DO NOT zoom in or out.
+   - DO NOT pan or tilt.
+   - DO NOT allow any background drift.
+   - The entire motion focus must be on the subject's LIPS, JAW, and EYES to match the speech.
+- PERFORMANCE VARIETY: If this image has been used before, create a FRESH performance (e.g., unique head tilt, empathetic gesturing) specifically tailored to the "{NARRATION}".
+- NO STATIC: Character MUST show life. Subtle blinking, natural empathetic nodding, realistic breathing.
+- PHYSICS: No morphing hands, no sliding "AI-glitch" movement.
+- BANNED: NO holograms, NO floating UI, NO cheesy AI effects.
 """
 
-DEFAULT_IMAGE_PROMPT = "Real-life Indian professional office, photorealistic 8k textures, static background."
-DEFAULT_MOTION_PROMPT = "Steady professional speaking shot, background perfectly locked."
-IMAGE_PROMPT_PREFIX = "[Target Aspect Ratio: {ASPECT_RATIO}] "
+
+
+DEFAULT_MOTION_PROMPT = "Natural cinematic motion, professional micro-expressions, subtle blinking, slow camera dolly in, 8k realism."
+
+# --- 3. THE UNIVERSAL DNA ANCHOR (Extreme Consistency) ---
+DNA_EXTRACTION_PROMPT = """
+EXTRACT UNIVERSAL PRODUCTION DNA:
+Analyze this Hero shot and create a 80-word 'Production Blueprint' for total consistency.
+
+1. IDENTITY DATA: Surgical facial details (jawline, eye-shape, skin pores) and exact hair texture.
+2. ATTIRE DATA: Exact fabric color and texture (e.g. Herringbone charcoal wool).
+3. ENVIRONMENTAL DATA: Specific background geometry, light source direction, and depth-of-field blur.
+4. CINEMATIC DATA: The exact color grade (e.g. Teal/Orange corporate shadows, warm skin tones).
+
+Format: Dense, technical paragraph. This is the master rule for all subsequent shots.
+"""
+
+# --- 4. IMAGE GENERATION PREFIX ---
+IMAGE_PROMPT_PREFIX = "Cinematic 8k, {ASPECT_RATIO} Vertical, Photorealistic Masterpiece, High-end Indian Corporate Studio, Sharp Focus, Shot on 35mm lens. "
+
+DEFAULT_IMAGE_PROMPT = "An authentic Indian professional expert in a high-end corporate office, ultra-realistic skin, 8k focus."
