@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     scene_duration: int
     enable_subtitles: bool
     enable_voiceover: bool
+    voice_gender: str # "Male" or "Female"
     enable_transitions: bool
     total_duration: int  # in seconds
     model_id: str

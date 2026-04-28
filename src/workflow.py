@@ -14,15 +14,24 @@ def asset_generation_node(state: AgentState) -> AgentState:
     print(f"--- [Node: Parallel Asset Generation] ---")
     
     with ThreadPoolExecutor() as executor:
+        # Run image and voice generation in parallel
         future_gen = executor.submit(image_node, state.copy())
         future_voice = executor.submit(voice_node, state.copy())
         
         state_gen = future_gen.result()
         state_voice = future_voice.result()
         
+    # --- CRITICAL MERGE ---
+    # 1. Preserve Global State (DNA, etc.)
+    if "identity_dna" in state_gen:
+        state["identity_dna"] = state_gen["identity_dna"]
+    
+    # 2. Merge Scene Assets
+    # 2. Merge Scene Assets (Full Metadata)
     for i in range(len(state["scenes"])):
-        state["scenes"][i]["image_path"] = state_gen["scenes"][i].get("image_path")
-        state["scenes"][i]["audio_path"] = state_voice["scenes"][i].get("audio_path")
+        # This merges all keys (paths, model names, costs) from both parallel results
+        state["scenes"][i].update(state_gen["scenes"][i])
+        state["scenes"][i].update(state_voice["scenes"][i])
         
     return state
 

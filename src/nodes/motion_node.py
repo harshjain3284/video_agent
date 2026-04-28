@@ -6,7 +6,7 @@ from datetime import datetime
 from google import genai
 from google.genai import types as genai_types
 from src.state.agent_state import AgentState
-from src.config import GEMINI_API_KEY, GROQ_API_KEY
+from src.config import GEMINI_API_KEY, GROQ_API_KEY, MODEL_REGISTRY
 from src.prompts import MOTION_PROMPT, DEFAULT_MOTION_PROMPT
 from src.utils.core_utils import retry_with_backoff
 import time
@@ -42,10 +42,15 @@ def motion_analyst_node(state: AgentState) -> AgentState:
 
         success = False
         last_trace = ""
-        print(f"   🎬 [Motion] Analyzing Image & Narration for Scene {scene_id}...")
+        print(f"   [Motion] Analyzing Image & Narration for Scene {scene_id}...")
         
-        # CHAIN: Gemini 3.1 (Default) -> Gemma 4 -> Gemini 2.0
-        for model_id in ["gemini-3.1-flash-lite-preview", "gemma-4-31b-it", "gemma-4-26b-a4b-it", "gemini-2.0-flash"]:
+        # CHAIN: Using Registry for Analysis
+        analysis_chain = [
+            MODEL_REGISTRY["identity_anchor"],
+            MODEL_REGISTRY["identity_backup_1"],
+            MODEL_REGISTRY["identity_backup_2"]
+        ]
+        for model_id in analysis_chain:
             try:
                 print(f"      🔍 Attempting {model_id}...")
                 response = client.models.generate_content(
@@ -57,7 +62,7 @@ def motion_analyst_node(state: AgentState) -> AgentState:
                 # CRITICAL: Save the motion prompt so the Video Node can use it!
                 scene["motion_prompt"] = motion_desc
                 
-                print(f"      ✅ Motion Plan Ready: {motion_desc[:100]}...")
+                print(f"      Motion Plan Ready: {motion_desc[:100]}...")
 
                 state["audit_log"].append({
                     "timestamp": datetime.now().strftime("%H:%M:%S"),

@@ -5,7 +5,7 @@ from datetime import datetime
 from google import genai
 from google.genai import types as genai_types
 from src.state.agent_state import AgentState
-from src.config import GEMINI_API_KEY, COSTS
+from src.config import GEMINI_API_KEY, COSTS, MODEL_REGISTRY
 from src.utils.core_utils import ensure_session_dir, format_aspect_ratio, retry_with_backoff
 from src.prompts import DEFAULT_MOTION_PROMPT
 from src.utils.veo_utils import (
@@ -53,7 +53,7 @@ def generate_veo_video(
         duration = 4 if duration < 5 else (6 if duration < 7 else 8)
     
     prompt = _get_scene_prompt(scene, ratio)
-    actual_model = model_id or "veo-3.1-generate-preview"
+    actual_model = model_id or MODEL_REGISTRY["video_cinematic"]
 
     def _call_veo():
         client = genai.Client(api_key=api_key)
@@ -95,7 +95,7 @@ def generate_veo_video(
         return retry_with_backoff(_call_veo, retries=3, initial_delay=10)
     except Exception as e:
         trace = traceback.format_exc()
-        print(f"❌ [DEV ERROR] Video Gen Scene {scene_id}:\n{trace}")
+        print(f" [DEV ERROR] Video Gen Scene {scene_id}:\n{trace}")
         audit_log.append({
             "timestamp": datetime.now().strftime("%H:%M:%S"),
             "node": f"Video Gen: Scene {scene_id}",
@@ -119,10 +119,10 @@ def video_node(state: AgentState) -> AgentState:
     results = []
     for s in scenes:
         scene_id = s.get("id", "unknown")
-        print(f"   🎥 [Veo] Generating AI Video Motion for Scene {scene_id}...")
+        print(f"   [Veo] Generating AI Video Motion for Scene {scene_id}...")
         res = generate_veo_video(s, gemini_key or "", video_model_id, session_id, aspect_ratio, state["audit_log"])
         if res and res.get("video_path"):
-            print(f"      ✅ Video Segment Ready: {os.path.basename(res['video_path'])}")
+            print(f"      Video Segment Ready: {os.path.basename(res['video_path'])}")
         results.append(res if res else s)
         time.sleep(5.0) # Standard Cooling
 

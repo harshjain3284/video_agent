@@ -6,7 +6,7 @@ import traceback
 from gtts import gTTS
 from datetime import datetime
 from src.state.agent_state import AgentState
-from src.config import ASSETS_DIR, DEFAULT_VOICE_LANGUAGE, VOICE_LANGUAGES, STRATEGIC_VOICES
+from src.config import ASSETS_DIR, DEFAULT_VOICE_LANGUAGE, VOICE_LANGUAGES, STRATEGIC_VOICES, DEFAULT_VOICE_GENDER
 from src.utils.core_utils import ensure_session_dir, retry_with_backoff
 import time
 
@@ -24,10 +24,10 @@ def generate_scene_audio(scene, session_id, voice, audit_log, is_hindi=False):
     if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
         scene["audio_path"] = audio_path
         return scene
-
+    
     raw_narration = scene.get("narration", "")
     
-    # 🧼 SURGICAL CLEANER: Total focus on speakable text.
+    # SURGICAL CLEANER: Total focus on speakable text.
     clean_text = re.sub(r'\[.*?\]', '', raw_narration) # Remove [Brackets]
     clean_text = re.sub(r'\*.*?\*', '', clean_text)    # Remove *Stars*
     # Remove all complex symbols, keeping only letters, numbers, spaces and essential Hindi/Latin punctuation
@@ -35,12 +35,17 @@ def generate_scene_audio(scene, session_id, voice, audit_log, is_hindi=False):
     clean_text = ' '.join(clean_text.split()) # Remove double spaces
     
     if not clean_text or not any(c.isalnum() for c in clean_text):
-        print(f"   ⚠️ Scene {scene_id} has no speakable narration. Skipping TTS.")
+        print(f"   [WARNING] Scene {scene_id} has no speakable narration. Skipping TTS.")
         return scene
 
+    active_rate = "+10%" if is_hindi else "+0%"
+
     def _call_tts(target_rate=None):
-        active_rate = target_rate if target_rate is not None else ("+10%" if is_hindi else "+0%")
-        print(f"   🗣️ Scene {scene_id}: Generating TTS for [{clean_text[:40]}...]")
+        nonlocal active_rate
+        if target_rate is not None:
+            active_rate = target_rate
+            
+        print(f"   Scene {scene_id}: Generating TTS for [{clean_text[:40]}...]")
         
         # Defensive Wait to prevent server-side drops
         time.sleep(1.0)
@@ -52,7 +57,7 @@ def generate_scene_audio(scene, session_id, voice, audit_log, is_hindi=False):
                     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
                 except:
                     pass
-                    
+            
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
@@ -60,14 +65,20 @@ def generate_scene_audio(scene, session_id, voice, audit_log, is_hindi=False):
                 asyncio.set_event_loop(loop)
             
             if loop.is_running():
-                # If we are in Streamlit's loop, we use a thread-safe future
                 import threading
+                thread_exc = []
                 def _run():
-                    asyncio.run(_save_edge_audio(clean_text, audio_path, voice, rate=active_rate))
+                    try:
+                        asyncio.run(_save_edge_audio(clean_text, audio_path, voice, rate=active_rate))
+                    except Exception as te:
+                        thread_exc.append(te)
+                
                 t = threading.Thread(target=_run)
                 t.start()
                 t.join()
-
+                
+                if thread_exc:
+                    raise thread_exc[0]
             else:
                 loop.run_until_complete(_save_edge_audio(clean_text, audio_path, voice, rate=active_rate))
 
@@ -117,33 +128,28 @@ def generate_scene_audio(scene, session_id, voice, audit_log, is_hindi=False):
                     
                     if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
                         scene["audio_path"] = audio_path
-                        print(f"      ✅ CLI Success!")
+                        print(f"      CLI Success!")
                         return scene
                     raise RuntimeError("CLI failed to create file.")
                 except Exception as e4:
                     try:
                         # ATTEMPT 5: Google TTS (The Unstoppable Backup)
-                        print(f"🔄 [EMERGENCY] Switching to Google Cloud TTS for Scene {scene_id}...")
+                        print(f"[EMERGENCY] Switching to Google Cloud TTS for Scene {scene_id}...")
                         from gtts import gTTS
                         tts = gTTS(text=clean_text, lang='hi' if is_hindi else 'en')
                         tts.save(audio_path)
                         
                         if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
                             scene["audio_path"] = audio_path
-                            print(f"      ✅ Google TTS Success!")
+                            print(f"      Google TTS Success!")
                             return scene
                         raise RuntimeError("gTTS failed to create file.")
                     except Exception as e5:
                         trace = traceback.format_exc()
-                        print(f"❌ [TOTAL FATAL] All 5 Voice Engines failed:\n{trace}")
+                        print(f" [TOTAL FATAL] All 5 Voice Engines failed:\n{trace}")
                         audit_log.append({"timestamp": datetime.now().strftime("%H:%M:%S"), "node": f"Voice Gen {scene_id}", "status": "Total Failure", "trace": trace})
                         scene["audio_path"] = None
                         return scene
-
-
-
-
-
 
 def voice_node(state: AgentState) -> AgentState:
     print(f"--- [Node: Voiceover Generator (Self-Healing Mode)] ---")
@@ -155,11 +161,17 @@ def voice_node(state: AgentState) -> AgentState:
     lang_key = state.get("voice_language", DEFAULT_VOICE_LANGUAGE)
     is_hindi = "Hindi" in lang_key
     voice_config = VOICE_LANGUAGES.get(lang_key, VOICE_LANGUAGES[DEFAULT_VOICE_LANGUAGE])
-    voice = voice_config["voice"]
     
-    if is_hindi:
-        post_type = state.get("post_type", "Authority")
-        voice = STRATEGIC_VOICES.get(post_type, voice)
+    # 1. Determine base voice by gender
+    gender = state.get("voice_gender", DEFAULT_VOICE_GENDER).lower()
+    voice = voice_config.get(gender, voice_config.get("female")) # Fallback to female if gender invalid
+    
+    # 2. STRATEGIC OVERRIDE: Only if user hasn't explicitly set a gender preference 
+    # (Optional: Or we can prioritize strategy. Let's prioritize user choice if present)
+    if "voice_gender" not in state or not state["voice_gender"]:
+        if is_hindi:
+            post_type = state.get("post_type", "Authority")
+            voice = STRATEGIC_VOICES.get(post_type, voice)
 
     results = []
     for s in state["scenes"]:
@@ -171,10 +183,5 @@ def voice_node(state: AgentState) -> AgentState:
         results.append(s)
         time.sleep(1.0)
     
-    state["scenes"] = results
-    return state
-
-
-            
     state["scenes"] = results
     return state
