@@ -33,47 +33,60 @@ def apply_custom_styles():
     """, unsafe_allow_html=True)
 
 def display_scene_grid(scenes):
-    """Simple grid for reviewing generated assets, including motion prompts and AI video chunks."""
-    st.write("### 📹 Production Preview")
-    num_scenes = len(scenes)
-    cols_per_row = 3
-    rows = (num_scenes + (cols_per_row - 1)) // cols_per_row
+    """Premium, detailed grid for reviewing every stage of production."""
+    st.write("### 🎬 Detailed Production Breakdown")
     
-    for r in range(rows):
-        cols = st.columns(cols_per_row)
-        for c in range(cols_per_row):
-            idx = r * cols_per_row + c
-            if idx < num_scenes:
-                scene = scenes[idx]
-                with cols[c]:
-                    # Scene Header
-                    duration = scene.get("duration", 0)
-                    st.markdown(f"**Scene {idx + 1} ({duration}s)**")
+    for idx, scene in enumerate(scenes):
+        with st.container():
+            st.markdown(f"#### 🎥 Scene {idx + 1} ({scene.get('duration', 0)}s)")
+            
+            # Top Row: Prompts and Text
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.caption("📝 **Narration Script**")
+                st.info(scene.get("narration", "Waiting..."))
+            with c2:
+                st.caption("🎨 **Visual Prompt**")
+                st.info(scene.get("visual_prompt", "Waiting..."))
+            with c3:
+                st.caption("🧠 **Motion Plan**")
+                st.success(scene.get("motion_prompt", "Waiting for analyst..."))
+            
+            # Middle Row: Assets
+            c4, c5, c6 = st.columns(3)
+            with c4:
+                st.caption("🔊 **AI Voice**")
+                audio_path = scene.get("audio_path")
+                if audio_path and os.path.exists(audio_path):
+                    with open(audio_path, "rb") as f:
+                        st.audio(f.read(), format="audio/mp3")
+                else:
+                    st.warning("⌛ Generating Audio...")
+            with c5:
+                st.caption("🖼️ **AI Image**")
+                img_path = scene.get("image_path")
+                if img_path and os.path.exists(img_path):
+                    with open(img_path, "rb") as f:
+                        st.image(f.read(), use_container_width=True)
+                else:
+                    st.warning("⌛ Generating Image...")
+            with c6:
+                st.caption("🎬 **AI Motion (Veo)**")
+                vid_path = scene.get("video_path")
+                if vid_path and os.path.exists(vid_path):
+                    with open(vid_path, "rb") as f:
+                        st.video(f.read())
+                else:
+                    st.info("⌛ Rendering Video...")
 
-                    
-                    # 1. VISUAL (Video chunk if exists, else static image)
-                    if scene.get("video_path") and os.path.exists(scene["video_path"]):
-                        st.info("✨ AI Motion Ready")
-                        st.video(scene["video_path"])
-                    elif scene.get("image_path") and os.path.exists(scene["image_path"]):
-                        st.image(scene["image_path"], width=200)
-                    else:
-                        st.warning("⌛ Generating Assets...")
-
-                    # Show Model Labels
-                    img_model = scene.get("image_model", "Unknown")
-                    mot_model = scene.get("motion_model", "Pending...")
-                    st.caption(f"🖼️ Image: {img_model}")
-                    st.caption(f"🧬 Motion: {mot_model}")
-                    
-                    # 2. AUDIO
-                    if scene.get("audio_path"):
-                        st.audio(scene["audio_path"], format="audio/mp3")
-                    
-                    # 3. MOTION PROMPT
-                    if scene.get("motion_prompt"):
-                        with st.expander("📝 Motion Plan"):
-                            st.caption(scene["motion_prompt"])
+            # Bottom Row: QC / Inspector Data
+            if "trim_start" in scene or "quality_score" in scene:
+                with st.expander("🕵️ Inspector Quality Report", expanded=True):
+                    sc, tr = st.columns(2)
+                    sc.metric("Quality Score", f"{scene.get('quality_score', 0)*100:.1f}%")
+                    tr.metric("Recommended Timeline", f"{scene.get('trim_start', 0.0)}s - {scene.get('trim_end', scene.get('duration', 0.0))}s")
+            
+            st.divider()
 
 def display_production_bill(total_cost, img_cost, vid_cost):
     """Displays a premium, sleek production summary with dual USD/INR currency support."""

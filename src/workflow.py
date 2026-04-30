@@ -9,6 +9,7 @@ from src.nodes.voice_node import voice_node
 from src.nodes.editor_node import editor_node
 from src.nodes.motion_node import motion_analyst_node
 from src.nodes.video_node import video_node
+from src.nodes.inspector_node import inspector_node
 
 def asset_generation_node(state: AgentState) -> AgentState:
     print(f"--- [Node: Parallel Asset Generation] ---")
@@ -44,6 +45,7 @@ class VideoAgentWorkflow:
         workflow.add_node("image_generator", asset_generation_node)
         workflow.add_node("motion_analyst", motion_analyst_node)
         workflow.add_node("video_generator", video_node)
+        workflow.add_node("quality_inspector", inspector_node)
         workflow.add_node("final_editor", editor_node)
 
         # Define the new Motion-Enabled Path
@@ -51,7 +53,8 @@ class VideoAgentWorkflow:
         workflow.add_edge("parser", "image_generator")
         workflow.add_edge("image_generator", "motion_analyst")
         workflow.add_edge("motion_analyst", "video_generator")
-        workflow.add_edge("video_generator", "final_editor")
+        workflow.add_edge("video_generator", "quality_inspector")
+        workflow.add_edge("quality_inspector", "final_editor")
         workflow.add_edge("final_editor", END)
 
         self.app = workflow.compile()

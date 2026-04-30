@@ -136,13 +136,47 @@ elif st.session_state.workflow_step == "review":
                 else: current_dur = 8.0
             shot["duration"] = c3.selectbox(f"Dur {i}", options=[4.0, 6.0, 8.0], index=[4.0, 6.0, 8.0].index(current_dur), label_visibility="collapsed")
 
-    if st.button("🎬 Proceed with Production", type="primary"):
-        st.session_state.workflow_step = "generate"
+    if st.button("🎬 Proceed to Hero Identity", type="primary"):
+        st.session_state.workflow_step = "hero_approval"
         st.rerun()
     
     if st.button("⬅️ Restart"):
         st.session_state.workflow_step = "idle"
         st.rerun()
+
+# --- Stage 2.5: Hero Identity Approval ---
+elif st.session_state.workflow_step == "hero_approval":
+    st.header("🖼️ Hero Identity Approval")
+    state = st.session_state.agent_state
+    
+    from src.nodes.image_node import image_node
+    
+    if not state.get("identity_dna"):
+        with st.status("🎨 Generating Hero Identity...") as status:
+            state = image_node(state, hero_only=True)
+            st.session_state.agent_state = state
+            status.update(label="Hero Shot Ready!", state="complete")
+
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        if state["scenes"][0].get("image_path"):
+            with open(state["scenes"][0]["image_path"], "rb") as f:
+                st.image(f.read(), caption="Proposed Indian Professional Persona", width="stretch")
+    with col2:
+        st.info("📝 **Identity Visual Prompt**")
+        st.write(state["scenes"][0].get("visual_prompt"))
+        st.warning("⚠️ **Check for Accuracy**: Does this look like an Indian professional in a realistic office? If yes, proceed to full video generation.")
+        
+        if st.button("✅ Confirm Persona & Start Production", type="primary"):
+            st.session_state.workflow_step = "generate"
+            st.rerun()
+        
+        if st.button("🔄 Regenerate Hero"):
+            # Clear DNA and path to force new generation
+            state["identity_dna"] = None
+            state["scenes"][0]["image_path"] = None
+            st.session_state.agent_state = state
+            st.rerun()
 
 # --- Stage 3: Production Pipeline ---
 elif st.session_state.workflow_step == "generate" or st.session_state.workflow_step == "done":
@@ -162,6 +196,7 @@ elif st.session_state.workflow_step == "generate" or st.session_state.workflow_s
             from src.workflow import asset_generation_node
             from src.nodes.motion_node import motion_analyst_node
             from src.nodes.video_node import video_node
+            from src.nodes.inspector_node import inspector_node
             from src.nodes.editor_node import editor_node
 
             if st.session_state.workflow_step != "done":
@@ -177,7 +212,11 @@ elif st.session_state.workflow_step == "generate" or st.session_state.workflow_s
                 status.write("🎬 **Video Gen**: Rendering AI Motion (Veo 3.1)...")
                 current_state = video_node(current_state)
                 with grid_placeholder: display_scene_grid(current_state["scenes"])
-                prog_bar.progress(90)
+                prog_bar.progress(85)
+
+                status.write("🕵️ **AI Inspector**: Watching for glitches...")
+                current_state = inspector_node(current_state)
+                prog_bar.progress(95)
 
                 status.write("🎞️ **Final Editor**: Compiling video & safe-zones...")
                 current_state = editor_node(current_state)
@@ -187,10 +226,13 @@ elif st.session_state.workflow_step == "generate" or st.session_state.workflow_s
                 st.session_state.workflow_step = "done"
                 st.rerun()
 
-            # --- DISPLAY FINAL VIDEO ---
+            # --- DISPLAY FINAL VIDEO & PERSISTENT GRID ---
             if st.session_state.workflow_step == "done":
                 status.update(label="✅ Production Complete!", state="complete")
                 node_state = st.session_state.agent_state
+                
+                # RE-RENDER THE GRID SO IT DOES NOT DISAPPEAR
+                display_scene_grid(node_state["scenes"])
                 
                 st.divider()
                 st.write("### 🚀 Final Elite Video")
@@ -216,7 +258,7 @@ elif st.session_state.workflow_step == "generate" or st.session_state.workflow_s
                             "📥 Download MP4", 
                             open(node_state["video_path"], "rb"), 
                             f"video_{node_state['session_id']}.mp4",
-                            use_container_width=True
+                            width="stretch"
                         )
                         
                         # New: Download Production JSON
@@ -231,7 +273,7 @@ elif st.session_state.workflow_step == "generate" or st.session_state.workflow_s
                             data=json.dumps(manifest, indent=4),
                             file_name=f"manifest_{node_state['session_id']}.json",
                             mime="application/json",
-                            use_container_width=True
+                            width="stretch"
                         )
 
                         st.write("---")

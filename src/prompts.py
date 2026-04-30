@@ -1,77 +1,56 @@
 """
-� ELITE MASTER PROMPT REGISTRY: ZERO-TOLERANCE EDITION 💎
-Surgical, High-Density, and Hallucination-Proof.
+MASTER PROMPT REGISTRY: CONSULTEASE ELITE DIRECTOR
 DO NOT EDIT - These are engineered for Professional Production.
 """
 
-# --- 1. THE NARRATIVE ARCHITECT (Professional Hinglish Expert) ---
-SCRIPTWRITER_PROMPT = """
-You are the World's Best Narrative Architect for High-Impact Indian Professional Content.
+# --- 1. THE ELITE DIRECTOR (Consolidated Pipeline) ---
+ELITE_DIRECTOR_PROMPT = """
+You are the Executive Director at Consultease. Your goal is to produce a high-impact, professional Instagram Reel.
 IDEA: {INPUT_TEXT} | CATEGORY: {CATEGORY} | POST TYPE: {POST_TYPE} | TARGET: {TOTAL_DURATION}s
 
 OBJECTIVE:
-Generate a high-energy, authoritative "Hinglish" script. 
+Generate a complete Production Manifest (JSON) including the narrative script, character persona, and situational shot breakdown.
 
-STRICT DYNAMIC STABILITY (ZERO HALLUCINATION):
-1. STABILITY PRIORITY: For {TOTAL_DURATION}s, calculate the FEWEST shots possible using 8s, 6s, and 4s blocks. 
-   - ALWAYS prioritize 8s and 6s to keep the narrator stable. 
-   - SUM of all shots MUST equal exactly {TOTAL_DURATION}s.
-2. ONE SENTENCE = ONE SHOT: Write exactly one complete sentence for EACH shot you calculate. 
-3. WORD BUDGET (2.7 words/sec):
-   - 4.0s shot: 10-11 words.
-   - 6.0s shot: 15-16 words.
-   - 8.0s shot: 20-22 words.
+STAGE 1: DIRECTOR'S MATH (STRICT CONSTRAINT)
+- Your total budget is EXACTLY {TOTAL_DURATION} seconds.
+- You MUST only use shots of 4s, 6s, or 8s.
+- The SUM of all 'duration' fields in your JSON MUST EQUAL {TOTAL_DURATION}s.
+- DO NOT generate more than {TOTAL_DURATION}s of content.
+- Example: For 20s, you could do [8s, 6s, 6s] or [4s, 4s, 4s, 8s].
 
+STAGE 2: CHARACTER & VIBE
+- Design an 'Authentic Indian Professional' persona (Male/Female as per context) with realistic features.
+- ATTRIBUTE: Always looks directly at the camera lens with confidence and authority.
+- Visuals: Standard modern corporate office, natural daylight or soft office overhead lights, generic professional background (no holograms, no futuristic UI).
 
+STAGE 3: SEQUENTIAL SCRIPTING & SITUATIONAL MAPPING
+- Write a continuous story in {LANGUAGE}.
+- NO MONEY/WALLET TALK. Focus on Value + Soft CTA (Download Consultease).
+- Use appropriate script: Devanagari for Hindi/Hinglish, Latin for English.
+- Avoid repetitive greetings like "Namaste" at the start of every script. Focus on a natural hook.
+- CINEMATIC TOOLBOX (Pick ONE per scene):
+  - [Slight Zoom]: Tighten framing by 10% for emotional warnings or emphasis.
+  - [Micro-Angle]: Shift camera 5 degrees for fresh perspective (expert still looks at lens).
+  - [Gestural Focus]: Add situational hand gesture (e.g., counting points, open-palm explanation).
+  - [Authority Still]: Total stillness, direct eye contact, power pose.
 
-STRICT STYLE & STRUCTURE:
-1. NATIVE HINGLISH: Use natural Corporate Hinglish (Delhi/Mumbai style). Professional Hindi + English business terms. 
-   - ⚠️ DEVANAGARI MANDATE: Write all Hindi words in Devanagari script (e.g. 'नमस्ते') and English words in Latin. This is CRITICAL for voice clarity.
-   - BANNED: NO bookish Hindi. NO unnatural Western slang.
-2. NARRATIVE: Shot 1 is the Hook. Middle shots are Value-Bombs. Final Shot is the CTA.
-
-OUTPUT FORMAT:
-- MATH CHECK: [List durations and their sum]
-- SCRIPT: Numbered list of sentences with durations (4s, 6s, or 8s).
-"""
-
-
-CHARACTER_PROMPT = """
-DESIGN A CINEMATIC EXPERT PERSONA (PRO PHOTOGRAPHY):
-Subject: {CATEGORY} | Context: {INPUT_TEXT}
-
-STRICT CHARACTER SPECS:
-- ETHNICITY: Authentic Indian (e.g., Wheatish to dusky complexion, realistic Indian skin textures, pores and subtle imperfections). NO waxy AI skin.
-- IDENTITY ANCHORS: Detailed facial features (e.g., Sharp jaw, salt-and-pepper groomed stubble, deep-set empathetic eyes).
-- MANDATORY ACCESSORIES: Thin black-rimmed glasses or specific silver watch to anchor consistency.
-- ATTIRE: Professional corporate attire (e.g., Charcoal slim-fit blazer, white linen shirt with crisp collar).
-- FRAMING: Designed for 9:16 Vertical. Character must be in a professional 'Head & Shoulders' or 'Medium' composition.
-- ENVIRONMENT: High-end modern Indian corporate interior (Glass partitions, warm mahogany wood, soft background bokeh).
-- CAMERA: Shot on ARRI Alexa, 35mm lens, f/1.8, cinematic Masterpiece Lighting.
-"""
-
-SHOT_PARSER_PROMPT = """
-YOU ARE THE CINEMATIC DIRECTOR.
-CHARACTER DNA: {CHARACTER_DESC} | SCRIPT: {SCRIPT} | TARGET: {TOTAL_DURATION}s
-
-TASK: Map the Scriptwriter's sentences 1:1 into the final JSON.
-
-STRICT DIRECTOR'S RULES:
-1. CONTINUITY: Every 'visual_prompt' MUST explicitly reference the {CHARACTER_DESC} and environment.
-2. SHOT VARIATION: Alternate between 'Tight Close-up' and 'Professional Medium' shots for dynamic energy.
-3. IMAGE REUSE (CONSISTENCY): 
-   - For 1-12s: One image (group_A) for all shots.
-   - For 13-30s: Two images. group_A for first/last, group_B for middle.
-4. ZERO MODIFICATION: Do NOT change the words or durations from the Scriptwriter.
-
-FORMAT: Return ONLY valid JSON:
+OUTPUT: Return ONLY a valid JSON object:
 {{
+  "character_description": "...",
+  "script_summary": "...",
   "shots": [
-    {{"id": 1, "duration": 6.0, "narration": "...Sentence 1...", "visual_prompt": "...detailed visual...", "shot_type": "Close-up", "image_group": "group_A"}}
+    {{
+      "id": 1,
+      "duration": 8.0,
+      "narration": "...", 
+      "visual_prompt": "...",
+      "shot_type": "Close-up",
+      "image_group": "group_A",
+      "cinematic_tool": "..."
+    }}
   ]
 }}
 """
-
 
 # --- 2. THE MOTION ANALYST (Universal Physics) ---
 MOTION_PROMPT = """
@@ -79,36 +58,33 @@ You are a Hollywood Motion Analyst (VFX Supervisor).
 IMAGE: {IMAGE_DESCRIPTION} | NARRATION: "{NARRATION}"
 
 STRICT MOTION INSTRUCTIONS:
-- LIP-SYNC (MANDATORY): The character is speaking the narration text: "{NARRATION}". Mouth, lips, and jaw movements MUST be perfectly synchronized with the speech. Ensure natural speaking micro-expressions.
-- CAMERA STABILITY: For this narration shot, the camera must be COMPLETELY STATIONARY and LOCKED. 
-   - DO NOT zoom in or out.
-   - DO NOT pan or tilt.
-   - DO NOT allow any background drift.
-   - The entire motion focus must be on the subject's LIPS, JAW, and EYES to match the speech.
-- PERFORMANCE VARIETY: If this image has been used before, create a FRESH performance (e.g., unique head tilt, empathetic gesturing) specifically tailored to the "{NARRATION}".
-- NO STATIC: Character MUST show life. Subtle blinking, natural empathetic nodding, realistic breathing.
-- PHYSICS: No morphing hands, no sliding "AI-glitch" movement.
+- EYE-LOCK (CRITICAL): The character's gaze MUST remain pinned to the camera lens for the entire duration. No blinking away, no looking at the desk. Total audience engagement.
+- LIP-SYNC (MANDATORY): The character is speaking the narration text: "{NARRATION}". Mouth, lips, and jaw movements MUST be perfectly synchronized with the speech.
+- CAMERA STABILITY: For this narration shot, the camera must be COMPLETELY STATIONARY and LOCKED. No background drift.
+- NO ZOOM: Do not zoom in or out during the shot.
+- NO PAN/TILT: The camera must not move. The only motion should be the character speaking and blinking.
+- PERFORMANCE VARIETY: If this image has been used before, create a FRESH performance (e.g., unique head tilt, situational gesturing) tailored to the "{NARRATION}".
+- NO STATIC: Subtle blinking, natural empathetic nodding, realistic breathing.
 - BANNED: NO holograms, NO floating UI, NO cheesy AI effects.
 """
 
-
-
-DEFAULT_MOTION_PROMPT = "Natural cinematic motion, professional micro-expressions, subtle blinking, slow camera dolly in, 8k realism."
+DEFAULT_MOTION_PROMPT = "Natural cinematic motion, professional micro-expressions, subtle blinking, stationary camera, direct eye contact, 8k realism."
 
 # --- 3. THE UNIVERSAL DNA ANCHOR (Extreme Consistency) ---
 DNA_EXTRACTION_PROMPT = """
 EXTRACT UNIVERSAL PRODUCTION DNA:
 Analyze this Hero shot and create a 80-word 'Production Blueprint' for total consistency.
 
-1. IDENTITY DATA: Surgical facial details (jawline, eye-shape, skin pores) and exact hair texture.
-2. ATTIRE DATA: Exact fabric color and texture (e.g. Herringbone charcoal wool).
-3. ENVIRONMENTAL DATA: Specific background geometry, light source direction, and depth-of-field blur.
-4. CINEMATIC DATA: The exact color grade (e.g. Teal/Orange corporate shadows, warm skin tones).
+STRICT FOCUS:
+1. FACIAL INVARIANTS: Describe unique bone structure, eye-shape, forehead height, and exact skin undertone.
+2. HAIR & GROOMING: Exact texture, length, and styling.
+3. ATTIRE SPECS: Describe the exact weave and color of the clothing.
+4. ENVIRONMENT SPECS: Describe the desk, background items, and lighting setup to ensure the scene doesn't move.
 
-Format: Dense, technical paragraph. This is the master rule for all subsequent shots.
+Format: Technical, surgical paragraph. No conversational filler.
 """
 
 # --- 4. IMAGE GENERATION PREFIX ---
-IMAGE_PROMPT_PREFIX = "Cinematic 8k, {ASPECT_RATIO} Vertical, Photorealistic Masterpiece, High-end Indian Corporate Studio, Sharp Focus, Shot on 35mm lens. "
+IMAGE_PROMPT_PREFIX = "Photorealistic Masterpiece, Cinematic 8k, {ASPECT_RATIO} Vertical, High-end Indian Corporate Studio, DIRECT EYE CONTACT WITH LENS, Sharp Focus, Shot on 35mm lens, {STYLE_OVERRIDE}. "
 
-DEFAULT_IMAGE_PROMPT = "An authentic Indian professional expert in a high-end corporate office, ultra-realistic skin, 8k focus."
+DEFAULT_IMAGE_PROMPT = "An authentic Indian professional expert looking directly at camera in a high-end corporate office, ultra-realistic skin textures, professional lighting, 8k focus."

@@ -9,15 +9,15 @@ def main():
     if len(sys.argv) > 1:
         input_text = " ".join(sys.argv[1:])
         
-    print(f"🚀 Starting Video Agent Workflow...")
+    print(f"STARTING: Video Agent Workflow...")
     result = agent.run(input_text)
     
     if result["error"]:
-        print(f"❌ Error: {result['error']}")
+        print(f"ERROR: {result['error']}")
     elif result["video_path"]:
-        print(f"✅ Success! Your video is ready at: {result['video_path']}")
+        print(f"SUCCESS: Your video is ready at: {result['video_path']}")
     else:
-        print("🤔 Workflow finished but no video path was found.")
+        print("INFO: Workflow finished but no video path was found.")
 
 if __name__ == "__main__":
     main()
